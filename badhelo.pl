@@ -19,7 +19,7 @@ if ( (defined($ENV{'RELAYCLIENT'})) ||
 open(BADHELO,  "/var/qmail/control/badhelo");
 while(<BADHELO>) {
   chomp($_);
-  if ($hostname =~ /$_/) {
+  if ($hostname =~ /$_/i) {
     # Reject client
     print STDERR getppid()." Found $hostname in badhelo list !\n";
     sleep 5;
