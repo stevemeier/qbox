@@ -76,8 +76,16 @@ func main() {
     var response map[string]interface{}
     json.Unmarshal(resp.Body(), &response)
 
+    // Store ORIG_UID (Dovecot expects this)
+    // checkpassword: ORIG_UID environment was dropped by checkpassword.
+    // Can't verify if we're safe to run. See http://wiki2.dovecot.org/AuthDatabase/CheckPassword#Security
+    var env_orig_uid string = os.Getenv("ORIG_UID")
+
     // Start with a clean environment
     os.Clearenv()
+
+    // Restore ORIG_UID
+    os.Setenv("ORIG_UID", env_orig_uid)
 
     // Set up the environment for the authenticated user
     os.Setenv("HOME", response["home"].(string))
