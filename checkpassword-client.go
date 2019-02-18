@@ -115,6 +115,9 @@ func main() {
     err := syscall.Exec(os.Args[1], os.Args[1:], os.Environ())
     if err != nil { log.Fatal(err) }
 
+  } else {
+    time.Sleep(3)
+    os.Exit(1)
   }
 }
 
