@@ -18,8 +18,6 @@ int main() {
     exit(0);
   }
 
-
-//  long rcptcount = strtol(smtprcptcount, NULL, 10);
   int rcptcount = toString(smtprcptcount);
 
   if ( (strcmp(smtpmailfrom, "") == 0) &&
