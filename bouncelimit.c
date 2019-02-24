@@ -9,8 +9,7 @@ int main() {
   const char* smtprcptcount = getenv("SMTPRCPTCOUNT");
 
   if (smtpmailfrom == NULL) {
-    printf("\n");
-    exit(0);
+    smtpmailfrom = "";
   }
 
   if (smtprcptcount == NULL) {
@@ -18,6 +17,8 @@ int main() {
     exit(0);
   }
 
+
+//  long rcptcount = strtol(smtprcptcount, NULL, 10);
   int rcptcount = toString(smtprcptcount);
 
   if ( (strcmp(smtpmailfrom, "") == 0) &&
