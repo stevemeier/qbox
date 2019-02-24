@@ -92,11 +92,17 @@ int check_whitelist_ip (char *ip, char *rbl) {
 }
 
 int get_rbl_score (const char* rblname) {
-  chdir("/var/qmail/control/rbldomains");
-  FILE* file = fopen(rblname, "r");
-  int i = 0;
+  if (chdir("/var/qmail/control/rbldomains")) {
+    FILE* file = fopen(rblname, "r");
+    int i = 0;
+    int count = 0;
 
-  fscanf(file, "%d", &i);
-  fclose(file);
-  return i;
+    count = fscanf(file, "%d", &i);
+    fclose(file);
+    if (count == 1) {
+      return i;
+    }
+  } 
+  
+  return 0;
 }
