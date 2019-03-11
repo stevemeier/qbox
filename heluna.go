@@ -24,6 +24,7 @@ func main() {
   if heluna_active(domain) {
     fmt.Fprintf(os.Stderr, "%d Direct delivery for %s attempted (should come via Heluna)\n", os.Getppid(), os.Getenv("SMTPRCPTTO"))
     fmt.Println("E451 Please obey MX configuration")
+    os.Exit(0)
   }
 
   // Happy End
