@@ -14,6 +14,9 @@ bouncelimit:
 checkpassword-client:
 	go build checkpassword-client.go
 	strip checkpassword-client
+heluna:
+	go build heluna.go
+	strip heluna
 mfcheck:
 	go build mfcheck.go
 	strip mfcheck
