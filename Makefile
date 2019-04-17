@@ -1,4 +1,4 @@
-all:	asncheck badhelo badrcptto bouncelimit checkpassword-client mfcheck rblcheck rwlcheck trust-log
+all:	asncheck badhelo badrcptto bouncelimit checkpassword-client mfcheck rblcheck rwlcheck spfcheck trust-log
 asncheck:
 	go build asncheck.go
 	strip asncheck
