@@ -26,6 +26,9 @@ rblcheck:
 rwlcheck:
 	gcc -O2 -D_FORTIFY_SOURCE -o rwlcheck rwlcheck.c
 	strip rwlcheck
+spfcheck:
+	go build spfcheck.go
+	strip spfcheck
 trust-log:
 	gcc -O2 -D_FORTIFY_SOURCE -o trust-log trust-log.c
 	strip trust-log
