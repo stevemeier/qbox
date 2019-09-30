@@ -41,7 +41,7 @@ if (defined($ENV{'TCP6REMOTEHOST'})) {
 }
 
 # Net::Netmask object
-my $block = NetAddr::IP::Lite->new($tcpremoteip, $mask);
+my $ipobj = NetAddr::IP::Lite->new($tcpremoteip, $mask);
 my $network = $ipobj->network();
    $network =~ s/\/\d+$//ix;
 
