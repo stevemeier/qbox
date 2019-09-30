@@ -11,7 +11,7 @@ use DBI;
 use DBD::SQLite;
 use Domain::PublicSuffix;
 use Time::Local;
-use Net::Netmask;
+use NetAddr::IP::Lite qw(:lower);
 
 # Seconds until greylisting is deactivated for 'triplet'
 my $mindelay = 170;
@@ -41,8 +41,9 @@ if (defined($ENV{'TCP6REMOTEHOST'})) {
 }
 
 # Net::Netmask object
-my $block = Net::Netmask->new($tcpremoteip, $mask);
-my $network = $block->base();
+my $block = NetAddr::IP::Lite->new($tcpremoteip, $mask);
+my $network = $ipobj->network();
+   $network =~ s/\/\d+$//ix;
 
 # Domain::PublicSuffix object
 my $suffix = Domain::PublicSuffix->new;
