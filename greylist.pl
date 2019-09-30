@@ -61,13 +61,7 @@ if ( (defined($ENV{'RELAYCLIENT'})) ||
   exit(0);
 }
 
-# hazel hack
-if ($ENV{'SMTPRCPTTO'} =~ /hetzl\.com/ix) {
-  print "\n";
-  exit(0);
-}
-
-# temp disable
+# Allow temporary disable
 if (-f "/var/qmail/control/greylist/disable") {
   print "\n";
   exit(0);
