@@ -22,7 +22,7 @@ func main() {
 	r, _ := spf.CheckHost(ip, addrparts[1])
 
 	if (r == "fail") {
-		fmt.Fprintf(os.Stderr, "%d SPF check failed for %s!\n", os.Getppid(), smtpmailfrom)
+		fmt.Fprintf(os.Stderr, "%d SPF check failed for %s\n", os.Getppid(), smtpmailfrom)
 		fmt.Fprintf(os.Stderr, "%d Mail recipient would have been %s\n", os.Getppid(), os.Getenv("SMTPRCPTTO"))
 		time.Sleep(5)
 		fmt.Println("E451 SPF check failed")
