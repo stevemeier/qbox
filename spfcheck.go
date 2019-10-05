@@ -9,12 +9,8 @@ import "time"
 
 func main() {
 	if env_defined("RELAYCLIENT") ||
-		env_defined("TRUSTCLIENT") {
-		fmt.Println()
-		os.Exit(0)
-	}
-
-	if !env_defined("TCPREMOTEIP") {
+		env_defined("TRUSTCLIENT") ||
+		!env_defined("TCPREMOTEIP") {
 		fmt.Println()
 		os.Exit(0)
 	}
