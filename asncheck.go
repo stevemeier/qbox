@@ -48,7 +48,7 @@ func main() {
 	if grep_file(asnumber, "/var/qmail/control/asndeny") {
 		// AS is denied
 		fmt.Fprintf(os.Stderr, "%d Client %s (AS %s) is blocked due to listing in asndeny\n", os.Getppid(), os.Getenv("TCPREMOTEIP"), asnumber)
-		fmt.Println("E541 Your AS is blocked from delivering mail to this system\n")
+		fmt.Println("E541 Your AS is blocked from delivering mail to this system")
 		os.Exit(0)
 	}
 
