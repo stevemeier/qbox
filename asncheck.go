@@ -135,7 +135,7 @@ func grep_file(regex string, file string) bool {
 
 	scanner := bufio.NewScanner(filehandle)
 	for scanner.Scan() {
-		match, _ := regexp.MatchString(`^`+regex+`$`, scanner.Text())
+		match, _ := regexp.MatchString(`^`+regex, scanner.Text())
 		if match {
 			return true
 		}
