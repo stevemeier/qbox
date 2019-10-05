@@ -54,8 +54,8 @@ func main() {
 
 	if grep_file(asnumber, "/var/qmail/control/asntrust") {
 		// AS is trusted
-		fmt.Println("O")
 		fmt.Fprintf(os.Stderr, "%d Client %s (AS %s) is trusted due to listing in asntrust\n", os.Getppid(), os.Getenv("TCPREMOTEIP"), asnumber)
+		fmt.Println("O")
 		os.Exit(0)
 	}
 
