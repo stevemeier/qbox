@@ -7,11 +7,6 @@ import "regexp"
 import "strings"
 
 func main() {
-	/*  if env_defined("RELAYCLIENT") ||
-	     env_defined("TRUSTCLIENT") {
-	    fmt.Println()
-	    os.Exit(0)
-	  } */
 
 	file, err := os.Open("/var/qmail/control/badrcptto")
 	if err != nil {
@@ -35,7 +30,6 @@ func main() {
 			fmt.Fprintf(os.Stdout, "E550 This address no longer accepts mail [%s]\n", recipient)
 			os.Exit(0)
 		}
-		//     fmt.Println(scanner.Text())
 	}
 
 	fmt.Println()
