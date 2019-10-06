@@ -16,6 +16,12 @@ func main() {
 		fmt.Println()
 		os.Exit(0)
 	}
+	
+	// Relayclients send to remote, non-checkable addresses
+	if env_defined("RELAYCLIENT") {
+		fmt.Println()
+		os.Exit(0)
+	}
 
 	// Split recipient in user and domain part
 	var smtprcptto string = os.Getenv("SMTPRCPTTO")
