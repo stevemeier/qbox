@@ -8,8 +8,6 @@ import "log"
 import "os"
 import "strings"
 
-//import "github.com/davecgh/go-spew/spew"
-
 const configdir = "/etc/qbox"
 
 func main() {
