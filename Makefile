@@ -26,6 +26,9 @@ rblcheck:
 rwlcheck:
 	gcc -O2 -D_FORTIFY_SOURCE -o rwlcheck rwlcheck.c
 	strip rwlcheck
+sessionid:
+	gcc -O2 -D__FORTIFY_SOURCE -luuid -o sessionid sessionid.c
+	strip sessionid
 spfcheck:
 	go build spfcheck.go
 	strip spfcheck
