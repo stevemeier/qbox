@@ -1,4 +1,12 @@
-all:	asncheck badhelo badrcptto bouncelimit checkpassword-client greylist mfcheck rblcheck rwlcheck sessionid spfcheck trust-log
+all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client greylist mfcheck rblcheck rwlcheck sessionid spfcheck trust-log
+_goget:
+	go get blitiri.com.ar/go/spf
+	go get github.com/c-robinson/iplib
+	go get github.com/go-sql-driver/mysql
+	go get github.com/mattn/go-sqlite3
+	go get golang.org/x/net/publicsuffix
+	go get golang.org/x/sys/unix
+	go get gopkg.in/resty.v1
 asncheck:
 	go build asncheck.go
 	strip asncheck
