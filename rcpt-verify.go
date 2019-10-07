@@ -8,13 +8,17 @@ import "log"
 import "os"
 import "strings"
 
-//import "github.com/davecgh/go-spew/spew"
-
 const configdir = "/etc/qbox"
 
 func main() {
 	// No SMTPRCPTTO, we can't do anything
 	if !env_defined("SMTPRCPTTO") {
+		fmt.Println()
+		os.Exit(0)
+	}
+	
+	// Relayclients send to remote, non-checkable addresses
+	if env_defined("RELAYCLIENT") {
 		fmt.Println()
 		os.Exit(0)
 	}
