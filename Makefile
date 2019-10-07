@@ -1,4 +1,4 @@
-all:	asncheck badhelo badrcptto bouncelimit checkpassword-client mfcheck rblcheck rwlcheck spfcheck trust-log
+all:	asncheck badhelo badrcptto bouncelimit checkpassword-client greylist mfcheck rblcheck rwlcheck sessionid spfcheck trust-log
 asncheck:
 	go build asncheck.go
 	strip asncheck
@@ -14,6 +14,9 @@ bouncelimit:
 checkpassword-client:
 	go build checkpassword-client.go
 	strip checkpassword-client
+greylist:
+	go build greylist.go
+	strip greylist
 heluna:
 	go build heluna.go
 	strip heluna
@@ -23,6 +26,9 @@ mfcheck:
 rblcheck:
 	gcc -O2 -D_FORTIFY_SOURCE -o rblcheck rblcheck.c
 	strip rblcheck
+rcpt-verify:
+	go build rcpt-verify.go
+	strip rcpt-verify
 rwlcheck:
 	gcc -O2 -D_FORTIFY_SOURCE -o rwlcheck rwlcheck.c
 	strip rwlcheck
