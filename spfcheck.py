@@ -5,7 +5,7 @@ import spf
 import sys
 
 # RELAYCLIENTs and TRUSTCLIENTs can pass
-if os.environ.get('RELAYCLIENT') or os.environ.get('TRUSTCLIENT'):
+if "RELAYCLIENT" in os.environ or "TRUSTCLIENT" in os.environ:
   print
   exit()
 
