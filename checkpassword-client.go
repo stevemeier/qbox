@@ -151,17 +151,19 @@ func service_name() string {
 		993: "imap",
 		995: "pop"}
 
-	ssllocalport, _ := strconv.ParseInt(os.Getenv("SSLLOCALPORT"), 10, 64)
+	var ssllocalport int64
+	ssllocalport, _ = strconv.ParseInt(os.Getenv("SSLLOCALPORT"), 10, 64)
 	if ssllocalport > 0 {
 		return ports[ssllocalport]
 	}
 
-	tcplocalport, _ := strconv.ParseInt(os.Getenv("TCPLOCALPORT"), 10, 64)
+	var tcplocalport int64
+	tcplocalport, _ = strconv.ParseInt(os.Getenv("TCPLOCALPORT"), 10, 64)
 	if tcplocalport > 0 {
 		return ports[tcplocalport]
 	}
 		
-	tcplocalport, _ := strconv.ParseInt(os.Getenv("TCP6LOCALPORT"), 10, 64)
+	tcplocalport, _ = strconv.ParseInt(os.Getenv("TCP6LOCALPORT"), 10, 64)
 	if tcplocalport > 0 {
 		return ports[tcplocalport]
 	}
