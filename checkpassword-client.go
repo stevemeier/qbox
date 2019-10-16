@@ -160,6 +160,11 @@ func service_name() string {
 	if tcplocalport > 0 {
 		return ports[tcplocalport]
 	}
+		
+	tcplocalport, _ := strconv.ParseInt(os.Getenv("TCP6LOCALPORT"), 10, 64)
+	if tcplocalport > 0 {
+		return ports[tcplocalport]
+	}
 
 	return "smtp"
 }
