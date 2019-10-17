@@ -1,6 +1,6 @@
 package main
 
-//import "encoding/json"
+import "encoding/json"
 import "fmt"
 import "io/ioutil"
 import "log"
@@ -28,9 +28,19 @@ type authcachemeta struct {
 
 var authcache map[string]authcachemeta
 
+type clientreqdata struct {
+	username	string
+	password	string
+	timestamp	int64
+	service		string
+	source		string
+}
+
 var db *sql.DB
 
 func authenticate(w http.ResponseWriter, r *http.Request) {
+	var reqdata clientreqdata
+
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -42,6 +52,11 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// POST
 		spew.Dump(reqBody)
+		err := json.Unmarshal(reqBody, &reqdata)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 }
 
