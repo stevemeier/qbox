@@ -71,7 +71,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// root is always denied
+	// `root` is always denied
 	fmt.Println(os.Stderr, "Checking if root")
 	if (reqdata.username == "root") {
 		fmt.Fprintf(os.Stderr, "User root denied on %s from %s\n", reqdata.service, reqdata.source)
