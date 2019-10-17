@@ -6,6 +6,7 @@ import "io/ioutil"
 import "log"
 import "net/http"
 import "os"
+import "strconv"
 import "github.com/davecgh/go-spew/spew"
 import "github.com/gorilla/mux"
 // DB
@@ -49,6 +50,17 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 	if len(reqBody) == 0 {
 		// GET
+		fmt.Println(os.Stderr, "Copying mux vars")
+		reqdata.username  = mux.Vars(r)["username"]
+		reqdata.password  = mux.Vars(r)["password"]
+		reqdata.service   = mux.Vars(r)["service"]
+		reqdata.source    = mux.Vars(r)["source"]
+		fmt.Println(os.Stderr, "Parsing timestamp parameter")
+		reqdata.timestamp, err = strconv.ParseInt(mux.Vars(r)["timestamp"], 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	} else {
 		// POST
 		spew.Dump(reqBody)
@@ -58,6 +70,27 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// root is always denied
+	fmt.Println(os.Stderr, "Checking if root")
+	if (reqdata.username == "root") {
+		fmt.Fprintf(os.Stderr, "User root denied on %s from %s\n", reqdata.service, reqdata.source)
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	// Check that DB is still there
+	fmt.Println(os.Stderr, "Checking DB")
+	err = db.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	fmt.Println(os.Stderr, "Reached end of authenticate function")
+	spew.Dump(reqdata)
+	w.WriteHeader(http.StatusForbidden)
+	return
 }
 
 func fileExists(filename string) bool {
@@ -95,8 +128,9 @@ func main () {
                         dbpass = string(buf)
                 }
         }
-        db, err := sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
-	_ = db
+
+	var err error
+        db, err = sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
 	if err == nil {
 		err = db.Ping()
 		if err != nil {
@@ -104,6 +138,7 @@ func main () {
 			os.Exit(1)
 		}
 		fmt.Println("DB connection established")
+		defer db.Close()
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
