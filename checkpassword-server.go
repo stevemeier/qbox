@@ -1,12 +1,16 @@
 package main
 
 //import "encoding/json"
-//import "fmt"
+import "fmt"
 import "io/ioutil"
 import "log"
 import "net/http"
+import "os"
 import "github.com/davecgh/go-spew/spew"
 import "github.com/gorilla/mux"
+// DB
+import "database/sql"
+import _ "github.com/go-sql-driver/mysql"
 
 type authcachedata struct {
 	uid	int64
@@ -24,6 +28,8 @@ type authcachemeta struct {
 
 var authcache map[string]authcachemeta
 
+var db *sql.DB
+
 func authenticate(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -39,9 +45,54 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func fileExists(filename string) bool {
+        info, err := os.Stat(filename)
+        if os.IsNotExist(err) {
+                return false
+        }
+
+        return !info.IsDir()
+}
+
 func main () {
+	const configdir = "/etc/qbox"
+	// Read config files
+        var dbserver string = "127.0.0.1"
+        if fileExists(configdir + "/dbserver") {
+                buf, err := ioutil.ReadFile(configdir + "/dbserver")
+                if err == nil {
+                        dbserver = string(buf)
+                }
+        }
+
+        var dbuser string = "qbox"
+        if fileExists(configdir + "/dbuser") {
+                buf, err := ioutil.ReadFile(configdir + "/dbuser")
+                if err == nil {
+                        dbuser = string(buf)
+                }
+        }
+
+        var dbpass string
+        if fileExists(configdir + "/dbpass") {
+                buf, err := ioutil.ReadFile(configdir + "/dbpass")
+                if err == nil {
+                        dbpass = string(buf)
+                }
+        }
+        db, err := sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
+	_ = db
+	if err == nil {
+		err = db.Ping()
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+		fmt.Println("DB connection established")
+	}
+
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", authenticate).Methods("POST")
         router.HandleFunc("/{service}/{username}/{password}/{timestamp}/{source}", authenticate).Methods("GET")
-	log.Fatal(http.ListenAndServe("127.0.0.1:7520", router))
+	log.Fatal(http.ListenAndServe("127.0.0.1:17520", router))
 }
