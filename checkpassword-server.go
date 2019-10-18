@@ -130,10 +130,27 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Println("Reached end of authenticate function")
 	spew.Dump(reqdata)
 	spew.Dump(dbdata)
+
+	if (reqdata.password == dbdata.password) {
+		w.WriteHeader(http.StatusOK)
+		rawin := json.RawMessage(`{"user":"`+reqdata.username+`",`+
+					 `"home":"`+dbdata.homedir+`",`+
+					 `"uid":`+strconv.FormatInt(dbdata.sysuid, 10)+`,`+
+					 `"gid":`+strconv.FormatInt(dbdata.sysgid, 10)+`,`+
+					 `"qboxuid":`+strconv.FormatInt(dbdata.uid, 10)+`,`+
+					 `"qboxgid":`+strconv.FormatInt(dbdata.gid, 10)+`}`)
+		bytes, err := rawin.MarshalJSON()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprintf(w, string(bytes))
+		return
+	}
+
 	w.WriteHeader(http.StatusForbidden)
+	fmt.Println("Reached end of authenticate function")
 	return
 }
 
