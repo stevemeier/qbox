@@ -6,8 +6,8 @@
 int main() {
   if ( (getenv("RELAYCLIENT")) ||
        (getenv("TRUSTCLIENT")) ) {
-    fprintf(stderr, "%d mail from: %s\n", getpid(), getenv("SMTPMAILFROM"));
-    fprintf(stderr, "%d rcpt to: %s\n", getpid(), getenv("SMTPRCPTTO"));
+    fprintf(stderr, "%d mail from: %s\n", getppid(), getenv("SMTPMAILFROM"));
+    fprintf(stderr, "%d rcpt to: %s\n", getppid(), getenv("SMTPRCPTTO"));
   }
 
   printf("\n");
