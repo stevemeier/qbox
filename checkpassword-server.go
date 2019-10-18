@@ -50,12 +50,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 	if len(reqBody) == 0 {
 		// GET
-		fmt.Println(os.Stderr, "Copying mux vars")
+		fmt.Println("Copying mux vars")
 		reqdata.username  = mux.Vars(r)["username"]
 		reqdata.password  = mux.Vars(r)["password"]
 		reqdata.service   = mux.Vars(r)["service"]
 		reqdata.source    = mux.Vars(r)["source"]
-		fmt.Println(os.Stderr, "Parsing timestamp parameter")
+		fmt.Println("Parsing timestamp parameter")
 		reqdata.timestamp, err = strconv.ParseInt(mux.Vars(r)["timestamp"], 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -72,7 +72,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// `root` is always denied
-	fmt.Println(os.Stderr, "Checking if root")
+	fmt.Println("Checking if root")
 	if (reqdata.username == "root") {
 		fmt.Fprintf(os.Stderr, "User root denied on %s from %s\n", reqdata.service, reqdata.source)
 		w.WriteHeader(http.StatusForbidden)
@@ -80,15 +80,52 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check that DB is still there
-	fmt.Println(os.Stderr, "Checking DB")
+	fmt.Println("Checking DB")
 	err = db.Ping()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
-	fmt.Println(os.Stderr, "Reached end of authenticate function")
+	// Query DB
+	type dbschema struct {
+		password	string
+		homedir		string
+		sysuid		int64
+		sysgid		int64
+		quota		int64
+		uid		int64
+		gid		int64
+		oathtoken	string
+	}
+	var dbdata dbschema
+
+	// Prepare and execute query
+	stmt1, err := db.Prepare("SELECT password,homedir,sysuid,sysgid,quota,uid,gid,oath_token FROM passwd WHERE username = ? AND ? != '' limit 1")
+	rows1, err := stmt1.Query(reqdata.username, reqdata.service)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt1.Close()
+
+	// Read query results
+	for rows1.Next() {
+		err := rows1.Scan(&dbdata.password,
+				  &dbdata.homedir,
+				  &dbdata.sysuid,
+				  &dbdata.sysgid,
+				  &dbdata.quota,
+				  &dbdata.uid,
+				  &dbdata.gid,
+				  &dbdata.oathtoken)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	fmt.Println("Reached end of authenticate function")
 	spew.Dump(reqdata)
+	spew.Dump(dbdata)
 	w.WriteHeader(http.StatusForbidden)
 	return
 }
@@ -145,4 +182,25 @@ func main () {
 	router.HandleFunc("/", authenticate).Methods("POST")
         router.HandleFunc("/{service}/{username}/{password}/{timestamp}/{source}", authenticate).Methods("GET")
 	log.Fatal(http.ListenAndServe("127.0.0.1:17520", router))
+}
+
+func hmac_md5_hex(salt string, password string) string {
+	hash := hmac.New(md5.New, []byte(password))
+	io.WriteString(hash, salt)
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func md5_hex(timestamp string, password string) string {
+	hash :=	md5.New()
+	io.WriteString(hash, timestamp + password)
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func unix_md5_crypt(salt string, password string) string {
+        crypt := crypt.MD5.New()
+        ret, _ := crypt.Generate([]byte(password), []byte(salt))
+
+        return ret
 }
