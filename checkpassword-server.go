@@ -1,7 +1,10 @@
 package main
 
+import "crypto/hmac"
+import "crypto/md5"
 import "encoding/json"
 import "fmt"
+import "io"
 import "io/ioutil"
 import "log"
 import "net/http"
@@ -12,6 +15,8 @@ import "github.com/gorilla/mux"
 // DB
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
+// Crypt
+import "github.com/GehirnInc/crypt"
 
 type authcachedata struct {
 	uid	int64
