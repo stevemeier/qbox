@@ -17,6 +17,8 @@ import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 // Crypt
 import "github.com/GehirnInc/crypt"
+// OTP
+import "github.com/hgfischer/go-otp"
 
 type authcachedata struct {
 	uid	int64
@@ -208,4 +210,9 @@ func unix_md5_crypt(salt string, password string) string {
         ret, _ := crypt.Generate([]byte(password), []byte(salt))
 
         return ret
+}
+
+func otp_verify(token string, password string) bool {
+	totp := otp.TOTP{Secret: token, IsBase32Secret: false, WindowBack: 20, WindowForward: 20}
+	return totp.Verify(password)
 }
