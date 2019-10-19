@@ -183,7 +183,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Write to log
-		logline := fmt.Sprintf("Authentication failed for %s on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+		var logline string
+		if dbdata.uid > 0 {
+			logline = fmt.Sprintf("Authentication failed for %s on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+		} else {
+			logline = fmt.Sprintf("User %s unknown on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+		}
 		fmt.Fprint(os.Stderr, logline)
 
 		// Send response to checkpassword-client
