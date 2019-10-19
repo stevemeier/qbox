@@ -13,6 +13,9 @@ import "os/exec"
 import "strconv"
 import "syscall"
 import "time"
+// Debugging
+//import "github.com/davecgh/go-spew/spew"
+// HTTP Routing
 import "github.com/gorilla/mux"
 // DB
 import "database/sql"
@@ -50,17 +53,17 @@ var maxfail int
 var failscript string
 
 type clientreqdata struct {
-	username	string
-	password	string
-	timestamp	string
-	service		string
-	source		string
+	Username	string
+	Password	string
+	Timestamp	string
+	Service		string
+	Source		string
 }
 
 var db *sql.DB
 
 func authenticate(w http.ResponseWriter, r *http.Request) {
-	var services = [...]string {"smtp","smtps","pop3","pop3s","imap","imaps"}
+	var services = [...]string {"smtp","smtps","pop","pop3","pop3s","imap","imaps"}
 
 	var authok bool = false
 	var reqdata clientreqdata
@@ -68,18 +71,20 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "{\"error\":\"Could not read request body\"}\n")
 		return
 	}
 
 	if len(reqBody) == 0 {
 		// GET
-		reqdata.username  = mux.Vars(r)["username"]
-		reqdata.password  = mux.Vars(r)["password"]
-		reqdata.service   = mux.Vars(r)["service"]
-		reqdata.source    = mux.Vars(r)["source"]
-		reqdata.timestamp = mux.Vars(r)["timestamp"]
+		reqdata.Username  = mux.Vars(r)["username"]
+		reqdata.Password  = mux.Vars(r)["password"]
+		reqdata.Service   = mux.Vars(r)["service"]
+		reqdata.Source    = mux.Vars(r)["source"]
+		reqdata.Timestamp = mux.Vars(r)["timestamp"]
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"error\":\"Could not parse parameters\"}\n")
 			return
 		}
 	} else {
@@ -87,6 +92,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(reqBody, &reqdata)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"error\":\"Could not parse JSON\"}\n")
 			return
 		}
 	}
@@ -94,17 +100,19 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	// Check if serice is supported
 	var servicesupported bool = false
 	for _, v := range(services) {
-		if v == reqdata.service { servicesupported = true }
+		if v == reqdata.Service { servicesupported = true }
 	}
 	if !servicesupported {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "{\"error\":\"Service '%s' is not supported\"}\n", reqdata.Service)
 		return
 	}
 
 	// `root` is always denied
-	if (reqdata.username == "root") {
-		fmt.Fprintf(os.Stderr, "User root denied on %s from %s\n", reqdata.service, reqdata.source)
+	if (reqdata.Username == "root") {
+		fmt.Fprintf(os.Stderr, "User root denied on %s from %s\n", reqdata.Service, reqdata.Source)
 		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintf(w, "{\"error\":\"root logins are prohibited\"}\n")
 		return
 	}
 
@@ -112,6 +120,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	err = db.Ping()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintf(w, "{\"error\":\"Database unavailable\"}\n")
 		return
 	}
 
@@ -130,7 +139,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare and execute query
 	stmt1, err := db.Prepare("SELECT password,homedir,sysuid,sysgid,quota,uid,gid,oath_token FROM passwd WHERE username = ? AND ? != '' limit 1")
-	rows1, err := stmt1.Query(reqdata.username, reqdata.service)
+	rows1, err := stmt1.Query(reqdata.Username, reqdata.Service)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -151,21 +160,21 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if (reqdata.password == dbdata.password) { authok = true }
+	if (reqdata.Password == dbdata.password) { authok = true }
 	// CRAM-MD5
-	if (reqdata.password == hmac_md5_hex(reqdata.timestamp, dbdata.password)) { authok = true }
+	if (reqdata.Password == hmac_md5_hex(reqdata.Timestamp, dbdata.password)) { authok = true }
 	// APOP
-	if (reqdata.password == md5_hex(reqdata.timestamp, dbdata.password)) { authok = true }
+	if (reqdata.Password == md5_hex(reqdata.Timestamp, dbdata.password)) { authok = true }
 	// OTP
-	if (otp_verify(dbdata.oathtoken, reqdata.password)) { authok = true }
+	if (otp_verify(dbdata.oathtoken, reqdata.Password)) { authok = true }
 
 	if authok {
 		// Write to log
-		fmt.Fprintf(os.Stderr, "Authentication succeeded for %s on %s from %s\n", reqdata.username, reqdata.service, reqdata.source);
+		fmt.Fprintf(os.Stderr, "Authentication succeeded for %s on %s from %s\n", reqdata.Username, reqdata.Service, reqdata.Source);
 
 		// Send response to checkpassword-client
 		w.WriteHeader(http.StatusOK)
-		rawin := json.RawMessage(`{"user":"`+reqdata.username+`",`+
+		rawin := json.RawMessage(`{"user":"`+reqdata.Username+`",`+
 					 `"home":"`+dbdata.homedir+`",`+
 					 `"uid":`+strconv.FormatInt(dbdata.sysuid, 10)+`,`+
 					 `"gid":`+strconv.FormatInt(dbdata.sysgid, 10)+`,`+
@@ -178,16 +187,16 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, string(bytes))
 
 		// Update `lastlogin` table
-		if !update_lastlogin(dbdata.uid, reqdata.username, reqdata.service) {
-			fmt.Println("Failed to update lastlogin table for "+reqdata.username)
+		if !update_lastlogin(dbdata.uid, reqdata.Username, reqdata.Service) {
+			fmt.Println("Failed to update lastlogin table for "+reqdata.Username)
 		}
 	} else {
 		// Write to log
 		var logline string
 		if dbdata.uid > 0 {
-			logline = fmt.Sprintf("Authentication failed for %s on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+			logline = fmt.Sprintf("Authentication failed for %s on %s from %s [password: %s]\n", reqdata.Username, reqdata.Service, reqdata.Source, reqdata.Password)
 		} else {
-			logline = fmt.Sprintf("User %s unknown on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+			logline = fmt.Sprintf("User %s unknown on %s from %s [password: %s]\n", reqdata.Username, reqdata.Service, reqdata.Source, reqdata.Password)
 		}
 		fmt.Fprint(os.Stderr, logline)
 
@@ -195,13 +204,13 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 
 		// Record auth failure for later
-		authfail[reqdata.source] = append(authfail[reqdata.source], authfaildata{epoch: time.Now().Unix(), message: timestamp()+` - `+logline} )
+		authfail[reqdata.Source] = append(authfail[reqdata.Source], authfaildata{epoch: time.Now().Unix(), message: timestamp()+` - `+logline} )
 
 		// If maximum authentication failures are reached, call failscript
-		if len(authfail[reqdata.source]) >= maxfail &&
+		if len(authfail[reqdata.Source]) >= maxfail &&
 		   len(failscript) > 0 {
-			fmt.Println("Calling "+failscript+" for "+reqdata.source)
-			cmd := exec.Command(failscript, reqdata.source)
+			fmt.Println("Calling "+failscript+" for "+reqdata.Source)
+			cmd := exec.Command(failscript, reqdata.Source)
 			cmdstdin, err := cmd.StdinPipe()
 			if err != nil {
 				fmt.Println("Failed to connect to stdin: ", err)
@@ -210,12 +219,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Println("Failed to run failscript: ", err)
 			}
-			for _, v := range authfail[reqdata.source] {
+			for _, v := range authfail[reqdata.Source] {
 				cmdstdin.Write([]byte(v.message))
 			}
 			cmdstdin.Close()
 			cmd.Wait()
-			delete(authfail, reqdata.source)
+			delete(authfail, reqdata.Source)
 		}
 	}
 
