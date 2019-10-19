@@ -2,7 +2,11 @@ all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpas
 _goget:
 	go get blitiri.com.ar/go/spf
 	go get github.com/c-robinson/iplib
+	go get github.com/DavidGamba/go-getoptions
+	go get github.com/GehirnInc/crypt
 	go get github.com/go-sql-driver/mysql
+	go get github.com/gorilla/mux
+	go get github.com/hgfischer/go-otp
 	go get github.com/mattn/go-sqlite3
 	go get golang.org/x/net/publicsuffix
 	go get golang.org/x/sys/unix
