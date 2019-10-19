@@ -73,7 +73,6 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 	if len(reqBody) == 0 {
 		// GET
-		fmt.Println("Copying mux vars")
 		reqdata.username  = mux.Vars(r)["username"]
 		reqdata.password  = mux.Vars(r)["password"]
 		reqdata.service   = mux.Vars(r)["service"]
@@ -196,7 +195,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		// If maximum authentication failures are reached, call failscript
 		if len(authfail[reqdata.source]) >= maxfail &&
 		   len(failscript) > 0 {
-			fmt.Println("Calling "+failscript+"\n")
+			fmt.Println("Calling "+failscript+" for "+reqdata.source)
 			cmd := exec.Command(failscript, reqdata.source)
 			cmdstdin, err := cmd.StdinPipe()
 			if err != nil {
@@ -286,7 +285,6 @@ func main () {
 			log.Fatal(err)
 			os.Exit(1)
 		}
-		fmt.Println("DB connection established")
 		defer db.Close()
 	}
 
