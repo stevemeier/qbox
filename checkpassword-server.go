@@ -9,9 +9,10 @@ import "io/ioutil"
 import "log"
 import "net/http"
 import "os"
+import "os/exec"
 import "strconv"
 import "syscall"
-import "github.com/davecgh/go-spew/spew"
+import "time"
 import "github.com/gorilla/mux"
 // DB
 import "database/sql"
@@ -39,12 +40,18 @@ type authcachemeta struct {
 	data	authcachedata
 }
 
-var authcache map[string]authcachemeta
+type authfaildata struct {
+	epoch	int64
+	message	string
+}
+
+var authfail = make(map[string][]authfaildata)
+var maxfail int
+var failscript string
 
 type clientreqdata struct {
 	username	string
 	password	string
-//	timestamp	int64
 	timestamp	string
 	service		string
 	source		string
@@ -71,8 +78,6 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		reqdata.password  = mux.Vars(r)["password"]
 		reqdata.service   = mux.Vars(r)["service"]
 		reqdata.source    = mux.Vars(r)["source"]
-//		fmt.Println("Parsing timestamp parameter")
-//		reqdata.timestamp, err = strconv.ParseInt(mux.Vars(r)["timestamp"], 10, 64)
 		reqdata.timestamp = mux.Vars(r)["timestamp"]
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -80,7 +85,6 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// POST
-		spew.Dump(reqBody)
 		err := json.Unmarshal(reqBody, &reqdata)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -99,7 +103,6 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// `root` is always denied
-	fmt.Println("Checking if root")
 	if (reqdata.username == "root") {
 		fmt.Fprintf(os.Stderr, "User root denied on %s from %s\n", reqdata.service, reqdata.source)
 		w.WriteHeader(http.StatusForbidden)
@@ -107,7 +110,6 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check that DB is still there
-	fmt.Println("Checking DB")
 	err = db.Ping()
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -150,9 +152,6 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	spew.Dump(reqdata)
-	spew.Dump(dbdata)
-
 	if (reqdata.password == dbdata.password) { authok = true }
 	// CRAM-MD5
 	if (reqdata.password == hmac_md5_hex(reqdata.timestamp, dbdata.password)) { authok = true }
@@ -162,7 +161,10 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	if (otp_verify(dbdata.oathtoken, reqdata.password)) { authok = true }
 
 	if authok {
+		// Write to log
 		fmt.Fprintf(os.Stderr, "Authentication succeeded for %s on %s from %s\n", reqdata.username, reqdata.service, reqdata.source);
+
+		// Send response to checkpassword-client
 		w.WriteHeader(http.StatusOK)
 		rawin := json.RawMessage(`{"user":"`+reqdata.username+`",`+
 					 `"home":"`+dbdata.homedir+`",`+
@@ -175,15 +177,44 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 		fmt.Fprintf(w, string(bytes))
+
+		// Update `lastlogin` table
 		if !update_lastlogin(dbdata.uid, reqdata.username, reqdata.service) {
 			fmt.Println("Failed to update lastlogin table for "+reqdata.username)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "Authentication failed for %s on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+		// Write to log
+		logline := fmt.Sprintf("Authentication failed for %s on %s from %s [password: %s]\n", reqdata.username, reqdata.service, reqdata.source, reqdata.password)
+		fmt.Fprint(os.Stderr, logline)
+
+		// Send response to checkpassword-client
 		w.WriteHeader(http.StatusForbidden)
 
+		// Record auth failure for later
+		authfail[reqdata.source] = append(authfail[reqdata.source], authfaildata{epoch: time.Now().Unix(), message: timestamp()+` - `+logline} )
+
+		// If maximum authentication failures are reached, call failscript
+		if len(authfail[reqdata.source]) >= maxfail &&
+		   len(failscript) > 0 {
+			fmt.Println("Calling "+failscript+"\n")
+			cmd := exec.Command(failscript, reqdata.source)
+			cmdstdin, err := cmd.StdinPipe()
+			if err != nil {
+				fmt.Println("Failed to connect to stdin: ", err)
+			}
+			cmd.Start()
+			if err != nil {
+				fmt.Println("Failed to run failscript: ", err)
+			}
+			for _, v := range authfail[reqdata.source] {
+				cmdstdin.Write([]byte(v.message))
+			}
+			cmdstdin.Close()
+			cmd.Wait()
+			delete(authfail, reqdata.source)
+		}
 	}
-	fmt.Println("Reached end of authenticate function")
+
 	return
 }
 
@@ -201,10 +232,19 @@ func main () {
 	var listenport int
 	opt := getoptions.New()
 	opt.IntVar(&listenport, "port", 17520)
+	opt.IntVar(&maxfail, "maxfail", 10)
+	opt.StringVar(&failscript, "failscript", "")
 	_, parseerr := opt.Parse(os.Args[1:])
 	if parseerr != nil {
 		fmt.Print(opt.Help())
 		log.Fatal(parseerr)
+	}
+
+	// Check that failscript exists
+	if failscript != "" {
+		if _, err := os.Stat(failscript); os.IsNotExist(err) {
+			log.Fatal(err)
+		}
 	}
 
 	// Running as root is discouraged
@@ -291,4 +331,9 @@ func update_lastlogin(uid int64, username string, service string) bool {
 	} else {
 		return true
 	}
+}
+
+func timestamp() string {
+	const timelayout = "2006-01-02 15:04:05"
+	return time.Unix(time.Now().Unix(), 0).Format(timelayout)
 }
