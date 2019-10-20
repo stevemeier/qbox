@@ -423,8 +423,8 @@ sub spam_assassin {
       }
       close($SARESULTFH);
       $msgsize = length($message);
-      unlink($tempfile);
     }
+    unlink($tempfile);
   }
 
   return;
