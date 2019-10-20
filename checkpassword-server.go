@@ -330,7 +330,7 @@ func unix_md5_crypt(salt string, password string) string {
 }
 
 func otp_verify(token string, password string) bool {
-	totp := otp.TOTP{Secret: token, IsBase32Secret: false, WindowBack: 20, WindowForward: 20}
+	totp := otp.TOTP{Secret: token, IsBase32Secret: true, WindowBack: 20, WindowForward: 20}
 	return totp.Verify(password)
 }
 
