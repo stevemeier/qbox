@@ -139,9 +139,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare and execute query
 	stmt1, err := db.Prepare("SELECT password,homedir,sysuid,sysgid,quota,uid,gid,oath_token FROM passwd WHERE username = ? AND ? != '' limit 1")
+	if err != nil {
+		fmt.Println("Prepare SELECT FROM passwd failed: "+err.Error())
+	}
 	rows1, err := stmt1.Query(reqdata.Username, reqdata.Service)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Executing SELECT FROM passwd failed: "+err.Error())
 	}
 	defer stmt1.Close()
 
@@ -156,7 +159,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 				  &dbdata.gid,
 				  &dbdata.oathtoken)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("Scaning SELECT FROM passwd result failed: "+err.Error())
 		}
 	}
 
@@ -182,7 +185,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 					 `"qboxgid":`+strconv.FormatInt(dbdata.gid, 10)+`}`)
 		bytes, err := rawin.MarshalJSON()
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("Failed to marshal response: "+err.Error())
 		}
 		fmt.Fprintf(w, string(bytes))
 
