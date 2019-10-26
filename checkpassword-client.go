@@ -44,8 +44,7 @@ func main() {
 	timestamp := timestamp_or_epoch(string(input[2]))
 
 	// Determine client IP address from environment
-	var ipaddr string
-	ipaddr = ip_from_env("SSLREMOTEIP")
+	var ipaddr string = ip_from_env("SSLREMOTEIP")
 	if len(ipaddr) == 0 {
 		ipaddr = ip_from_env("TCPREMOTEIP")
 	}
@@ -74,7 +73,12 @@ func main() {
 	// 200 means authentication successful
 	if resp.StatusCode() == 200 {
 		var response map[string]interface{}
-		json.Unmarshal(resp.Body(), &response)
+
+		// Unmarshal response from checkpassword-server
+		err := json.Unmarshal(resp.Body(), &response)
+		if err != nil {
+			os.Exit(4)
+		}
 
 		// Store ORIG_UID (Dovecot expects this)
 		// checkpassword: ORIG_UID environment was dropped by checkpassword.
@@ -95,7 +99,10 @@ func main() {
 		os.Setenv("QBOXGID", fmt.Sprintf("%.0f", response["qboxgid"]))
 
 		// Go to the home directory
-		os.Chdir(response["home"].(string))
+		err = os.Chdir(response["home"].(string))
+		if err != nil {
+			os.Exit(5)
+		}
 
 		var args string = strings.Join(os.Args[1:], " ")
 
@@ -107,12 +114,18 @@ func main() {
 			os.Setenv("userdb_gid", fmt.Sprintf("%.0f", response["gid"]))
 			os.Setenv("EXTRA", "userdb_uid userdb_gid")
 		} else {
-			syscall.Setgid(int(response["gid"].(float64)))
-			syscall.Setuid(int(response["uid"].(float64)))
+			err := syscall.Setgid(int(response["gid"].(float64)))
+			if err != nil {
+				os.Exit(6)
+			}
+			err = syscall.Setuid(int(response["uid"].(float64)))
+			if err != nil {
+				os.Exit(6)
+			}
 		}
 
 		// Run the programm from parameters
-		err := syscall.Exec(os.Args[1], os.Args[1:], os.Environ())
+		err = syscall.Exec(os.Args[1], os.Args[1:], os.Environ())
 		if err != nil {
 			log.Fatal(err)
 		}
