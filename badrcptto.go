@@ -8,6 +8,12 @@ import "strings"
 
 func main() {
 
+	if env_defined("RELAYCLIENT") ||
+	   env_defined("TRUSTCLIENT") {
+		fmt.Println()
+		os.Exit(0)
+	}
+
 	file, err := os.Open("/var/qmail/control/badrcptto")
 	if err != nil {
 		fmt.Println()
