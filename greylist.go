@@ -108,12 +108,18 @@ func main() {
 	if (epoch % 60) == 0 {
 		fmt.Fprintf(os.Stderr, "%d Vacuuming greylist database\n", os.Getppid())
 		_, err = db.Exec(`DELETE FROM main WHERE timestamp < ` + strconv.FormatInt((epoch-maxvalid), 10) + `; VACUUM`)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%d Failed to vacuum database: %s\n", os.Getppid(), err)
+		}
 	}
 
 	stmt, err := db.Prepare("SELECT COUNT(*) FROM main WHERE" +
 		"(timestamp >= ? AND timestamp <= ?)" +
 		"AND mail = ? AND rcpt = ? AND" +
 		"(ipaddr = ? OR rdns = ?)")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%d Failed to prepare query: %s\n", os.Getppid(), err)
+	}
 	var count int
 	//	fmt.Printf("SELECT COUNT(*) FROM main WHERE (timestamp >= %d AND timestamp <= %d) AND mail = \"%s\" AND rcpt = \"%s\" AND (ipaddr = \"%s\" OR rdns = \"%s\");\n", epoch - maxvalid, epoch + mindelay, senderdomain, recipient, remotenet, remotedomain)
 	err = stmt.QueryRow(epoch-maxvalid, epoch-mindelay, senderdomain, recipient, remotenet, remotedomain).Scan(&count)
@@ -131,7 +137,11 @@ func main() {
 
 	// Add client to the database
 	_, err = db.Exec(`INSERT INTO main VALUES ("` + remotenet + `","` + senderdomain + `","` + recipient + `","` + strconv.FormatInt(epoch, 10) + `","` + remotedomain + `")`)
-	fmt.Fprintf(os.Stderr, "%d IP %s added to greylist (%s -> %s)\n", os.Getppid(), remoteip, senderdomain, recipient)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%d Failed to insert into greylist DB: %s\n", os.Getppid(), err)
+	} else {
+		fmt.Fprintf(os.Stderr, "%d IP %s added to greylist (%s -> %s)\n", os.Getppid(), remoteip, senderdomain, recipient)
+	}
 	fmt.Println(message)
 
 	os.Exit(0)
@@ -146,9 +156,5 @@ func env_defined(key string) bool {
 
 func file_exists(filename string) bool {
 	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-
-	return true
+	return !os.IsNotExist(err)
 }
