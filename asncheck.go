@@ -74,7 +74,7 @@ func env_defined(key string) bool {
 
 func file_exists(filename string) bool {
 	_, err := os.Stat(filename)
-	return !os.IsNotExist(err) {
+	return !os.IsNotExist(err)
 }
 
 func is_private_ip(ip net.IP) bool {
