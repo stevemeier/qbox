@@ -16,7 +16,7 @@ func main() {
 		fmt.Println()
 		os.Exit(0)
 	}
-	
+
 	// Relayclients send to remote, non-checkable addresses
 	if env_defined("RELAYCLIENT") {
 		fmt.Println()
@@ -74,6 +74,10 @@ func main() {
 	// Query DB for domain rewrite
 	var rewrite string
 	stmt1, err := db.Prepare("SELECT rewrite FROM domains WHERE domain = ? AND rewrite != ''")
+	if err != nil {
+		internal_error()
+		log.Fatal(err)
+	}
 	rows1, err := stmt1.Query(domain)
 	if err != nil {
 		internal_error()
@@ -132,6 +136,11 @@ func main() {
 
 	var dcount int
 	err = stmt3.QueryRow(domain).Scan(&dcount)
+	if err != nil {
+		internal_error()
+		log.Fatal(err)
+	}
+
 	if dcount > 0 {
 		fmt.Fprintf(os.Stderr, "%d User %s not found in database\n", os.Getppid(), smtprcptto)
 		fmt.Fprintf(os.Stdout, "E550 User unknown [%s]\n", smtprcptto)
@@ -160,5 +169,4 @@ func env_defined(key string) bool {
 
 func internal_error() {
 	fmt.Println("E451 Recipient verification falied")
-	return
 }
