@@ -61,12 +61,11 @@ func env_defined(key string) bool {
 func mx_or_a(domain string) bool {
 	mx, error := net.LookupMX(domain)
 	_ = mx
-	return error == nil
+	if error == nil {
+		return true
+	}
 
 	addrs, error := net.LookupHost(domain)
 	_ = addrs
 	return error == nil
-
-	// neither MX nor A
-	return false
 }
