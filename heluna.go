@@ -42,9 +42,9 @@ func heluna_active(domain string) bool {
 	}
 
 	// look at MX set to see if it points to heluna.com
+	re := regexp.MustCompile(`\.in\.heluna\.com\.$`)
 	for i := 0; i < len(mx); i++ {
-		match, _ := regexp.MatchString("\\.in\\.heluna\\.com\\.$", mx[i].Host)
-		if match {
+		if re.MatchString(mx[i].Host) {
 			return true
 		}
 	}
