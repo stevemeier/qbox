@@ -20,8 +20,8 @@ import "github.com/gorilla/mux"
 // DB
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
-// Crypt
-import "github.com/GehirnInc/crypt"
+// Crypt (unix_md5_crypt)
+// import "github.com/GehirnInc/crypt"
 // OTP
 import "github.com/hgfischer/go-otp"
 // Getopt
@@ -29,19 +29,19 @@ import "github.com/DavidGamba/go-getoptions"
 
 const configdir = "/etc/qbox"
 
-type authcachedata struct {
-	uid	int64
-	gid	int64
-	user	string
-	home	string
-	qboxuid	int64
-	qboxgid	int64
-}
-
-type authcachemeta struct {
-	epoch	int64
-	data	authcachedata
-}
+//type authcachedata struct {
+//	uid	int64
+//	gid	int64
+//	user	string
+//	home	string
+//	qboxuid	int64
+//	qboxgid	int64
+//}
+//
+//type authcachemeta struct {
+//	epoch	int64
+//	data	authcachedata
+//}
 
 type authfaildata struct {
 	epoch	int64
@@ -82,11 +82,11 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		reqdata.Service   = mux.Vars(r)["service"]
 		reqdata.Source    = mux.Vars(r)["source"]
 		reqdata.Timestamp = mux.Vars(r)["timestamp"]
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"error\":\"Could not parse parameters\"}\n")
-			return
-		}
+//		if err != nil {
+//			w.WriteHeader(http.StatusBadRequest)
+//			fmt.Fprintf(w, "{\"error\":\"Could not parse parameters\"}\n")
+//			return
+//		}
 	} else {
 		// POST
 		err := json.Unmarshal(reqBody, &reqdata)
@@ -218,20 +218,24 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Println("Failed to connect to stdin: ", err)
 			}
-			cmd.Start()
+			err = cmd.Start()
 			if err != nil {
 				fmt.Println("Failed to run failscript: ", err)
 			}
 			for _, v := range authfail[reqdata.Source] {
-				cmdstdin.Write([]byte(v.message))
+				_, err := cmdstdin.Write([]byte(v.message))
+				if err != nil {
+					fmt.Println("Failed to write to stdin: ", err)
+				}
 			}
 			cmdstdin.Close()
-			cmd.Wait()
+			err = cmd.Wait()
+			if err != nil {
+				fmt.Println("Failed to wait for failscript: ", err)
+			}
 			delete(authfail, reqdata.Source)
 		}
 	}
-
-	return
 }
 
 func fileExists(filename string) bool {
@@ -313,24 +317,31 @@ func main () {
 
 func hmac_md5_hex(salt string, password string) string {
 	hash := hmac.New(md5.New, []byte(password))
-	io.WriteString(hash, salt)
+	_, err := io.WriteString(hash, salt)
+	if err != nil {
+		fmt.Println("Failed to write to hash function: ", err)
+	}
 
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
 func md5_hex(timestamp string, password string) string {
 	hash :=	md5.New()
-	io.WriteString(hash, timestamp + password)
+	_, err := io.WriteString(hash, timestamp + password)
+	if err != nil {
+		fmt.Println("Failed to write to hash function: ", err)
+	}
 
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func unix_md5_crypt(salt string, password string) string {
-        crypt := crypt.MD5.New()
-        ret, _ := crypt.Generate([]byte(password), []byte(salt))
-
-        return ret
-}
+// Unix authentication is not supported so the below is dead code
+//func unix_md5_crypt(salt string, password string) string {
+//        crypt := crypt.MD5.New()
+//        ret, _ := crypt.Generate([]byte(password), []byte(salt))
+//
+//        return ret
+//}
 
 func otp_verify(token string, password string) bool {
 	totp := otp.TOTP{Secret: token, IsBase32Secret: true, WindowBack: 20, WindowForward: 20}
