@@ -118,7 +118,7 @@ func main() {
 		}
 
 	} else {
-		time.Sleep(3)
+		time.Sleep(3 * time.Second)
 		os.Exit(1)
 	}
 }

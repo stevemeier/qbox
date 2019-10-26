@@ -24,7 +24,7 @@ func main() {
 	if (r == "fail") {
 		fmt.Fprintf(os.Stderr, "%d SPF check failed for %s\n", os.Getppid(), smtpmailfrom)
 		fmt.Fprintf(os.Stderr, "%d Mail recipient would have been %s\n", os.Getppid(), os.Getenv("SMTPRCPTTO"))
-		time.Sleep(5)
+		time.Sleep(5 * time.Second)
 		fmt.Println("E451 SPF check failed")
 	} else {
 		fmt.Println()
