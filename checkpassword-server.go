@@ -349,8 +349,14 @@ func otp_verify(token string, password string) bool {
 }
 
 func update_lastlogin(uid int64, username string, service string) bool {
-	stmt, _ := db.Prepare("INSERT INTO lastlogin VALUES (?, ?, UNIX_TIMESTAMP(NOW()), TIMESTAMP(NOW()), ?) ON DUPLICATE KEY UPDATE epoch=UNIX_TIMESTAMP(NOW()), timestamp=TIMESTAMP(NOW()), protocol=?")
-	_, err := stmt.Exec(strconv.FormatInt(uid, 10), username, service, service)
+	stmt, err := db.Prepare("INSERT INTO lastlogin VALUES (?, ?, UNIX_TIMESTAMP(NOW()), TIMESTAMP(NOW()), ?) ON DUPLICATE KEY UPDATE epoch=UNIX_TIMESTAMP(NOW()), timestamp=TIMESTAMP(NOW()), protocol=?")
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(strconv.FormatInt(uid, 10), username, service, service)
 	if err != nil {
 		fmt.Println(err)
 		return false
