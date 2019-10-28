@@ -1,4 +1,6 @@
 all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
+clean:
+	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
 _goget:
 	go get blitiri.com.ar/go/spf
 	go get github.com/c-robinson/iplib
