@@ -162,6 +162,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Scaning SELECT FROM passwd result failed: "+err.Error())
 		}
 	}
+	rows1.Close()
 
 	if (reqdata.Password == dbdata.password) { authok = true }
 	// CRAM-MD5
