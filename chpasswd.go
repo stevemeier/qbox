@@ -7,7 +7,7 @@ import "fmt"
 import "io/ioutil"
 import "log"
 import "os"
-//import "strings"
+import "strings"
 
 const configdir = "/etc/qbox"
 
@@ -55,17 +55,23 @@ func main() {
 	defer db.Close()
 
 	// Read username:password sets from stdin
-//	stdin := bufio.NewReader(os.Stdin)
+	var changes map[string]string
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Err() != nil {
 		fmt.Println("Could not read STDIN: "+err.Error())
 		os.Exit(1)
 	}
 	for scanner.Scan() {
-	    fmt.Println(scanner.Text())
+	    split := strings.SplitN(scanner.Text(), ":", 2)
+	    if len(split) == 2 {
+		    changes[split[0]] = split[1]
+	    }
 	}
 
 	// Execute SQL updates
+	for username, password := range changes {
+		fmt.Println("Updating "+username+" with password "+password)
+	}
 
 	// Exit
 }
