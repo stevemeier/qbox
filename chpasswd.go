@@ -77,7 +77,6 @@ func main() {
 
 	// Execute SQL updates
 	for username, password := range changes {
-//		fmt.Println("Updating "+username+" with password "+password)
 	        stmt, err := db.Prepare("UPDATE passwd SET password = ? WHERE username = ? LIMIT 1")
 		if err != nil {
 			fmt.Println(err)
@@ -85,15 +84,14 @@ func main() {
 		}
 		defer stmt.Close()
 
-	        _, err = stmt.Exec(username, password)
+	        _, err = stmt.Exec(password, username)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(2)
 		}
 	}
 
-	// Exit
-	os.Exit(0)
+	// END
 }
 
 func fileExists(filename string) bool {
