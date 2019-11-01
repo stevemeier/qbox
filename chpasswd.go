@@ -5,7 +5,6 @@ import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 import "fmt"
 import "io/ioutil"
-import "log"
 import "os"
 import "strings"
 
@@ -13,6 +12,11 @@ const configdir = "/etc/qbox"
 
 // Implements `chpasswd` functionality to be used by
 // Roundcube's password plugin
+
+// Exit codes
+// 0 = success
+// 1 = Problem reading from STDIN
+// 2 = Database problem
 
 func main() {
 	// Read config files
@@ -45,12 +49,12 @@ func main() {
 	if err == nil {
 		err = db.Ping()
 		if err != nil {
-			internal_error()
-			log.Fatal(err)
+			fmt.Println(err)
+			os.Exit(2)
 		}
 	} else {
-		internal_error()
-		log.Fatal(err)
+		fmt.Println(err)
+		os.Exit(2)
 	}
 	defer db.Close()
 
@@ -65,15 +69,31 @@ func main() {
 	    split := strings.SplitN(scanner.Text(), ":", 2)
 	    if len(split) == 2 {
 		    changes[split[0]] = split[1]
+	    } else {
+		    fmt.Println("Failed to parse: "+scanner.Text())
+		    os.Exit(1)
 	    }
 	}
 
 	// Execute SQL updates
 	for username, password := range changes {
-		fmt.Println("Updating "+username+" with password "+password)
+//		fmt.Println("Updating "+username+" with password "+password)
+	        stmt, err := db.Prepare("UPDATE passwd SET password = ? WHERE username = ? LIMIT 1")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(2)
+		}
+		defer stmt.Close()
+
+	        _, err = stmt.Exec(username, password)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(2)
+		}
 	}
 
 	// Exit
+	os.Exit(0)
 }
 
 func fileExists(filename string) bool {
@@ -83,15 +103,4 @@ func fileExists(filename string) bool {
 	}
 
 	return !info.IsDir()
-}
-
-func env_defined(key string) bool {
-	value, exists := os.LookupEnv(key)
-	_ = value
-
-	return exists
-}
-
-func internal_error() {
-	fmt.Println("E451 Recipient verification falied")
 }
