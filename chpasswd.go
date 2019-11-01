@@ -55,7 +55,7 @@ func main() {
 	defer db.Close()
 
 	// Read username:password sets from stdin
-	var changes map[string]string
+	var changes = make(map[string]string)
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Err() != nil {
 		fmt.Println("Could not read STDIN: "+err.Error())
