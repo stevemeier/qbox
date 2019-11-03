@@ -63,7 +63,7 @@ type clientreqdata struct {
 var db *sql.DB
 
 func authenticate(w http.ResponseWriter, r *http.Request) {
-	var services = [...]string {"smtp","smtps","pop","pop3","pop3s","imap","imaps"}
+	var services = [...]string {"smtp","smtps","pop","pops","pop3","pop3s","imap","imaps"}
 
 	var authok bool = false
 	var reqdata clientreqdata
