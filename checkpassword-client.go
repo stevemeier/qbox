@@ -19,7 +19,7 @@ import "strconv"
 
 func main() {
 	// Setup syslogger
-	syslog, err := syslog.New(syslog.LOG_ERR, "checkpassword-client")
+	syslog, err := syslog.New(syslog.LOG_MAIL, "checkpassword-client")
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(3)
@@ -124,12 +124,12 @@ func main() {
 		} else {
 			err := syscall.Setgid(int(response["gid"].(float64)))
 			if err != nil {
-				syslog.Write([]byte("Failed to setgid"))
+				syslog.Write([]byte("Failed to setgid: "+err.Error()))
 				os.Exit(6)
 			}
 			err = syscall.Setuid(int(response["uid"].(float64)))
 			if err != nil {
-				syslog.Write([]byte("Failed to setuid"))
+				syslog.Write([]byte("Failed to setuid: "+err.Error()))
 				os.Exit(6)
 			}
 		}
