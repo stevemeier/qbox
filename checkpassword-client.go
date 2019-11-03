@@ -9,6 +9,7 @@ import "fmt"
 import "gopkg.in/resty.v1"
 import "os"
 import "log"
+import "log/syslog"
 import "time"
 import "encoding/json"
 import "regexp"
@@ -17,15 +18,19 @@ import "syscall"
 import "strconv"
 
 func main() {
+	// Setup syslogger
+	syslog, err := syslog.New(syslog.LOG_ERR, "checkpassword-client")
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(3)
+	}
 
 	// Open fd3
 	fd3 := os.NewFile(3, "/proc/self/fd/3")
 
 	// Read 512 bytes from fd3
 	data := make([]byte, 512)
-	count, err := fd3.Read(data)
-	// we need to do something with `count` so the compiler doesn't complain
-	_ = count
+	_, err = fd3.Read(data)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(2)
@@ -67,6 +72,7 @@ func main() {
 
 	// If the backend is unreachable, exit 3
 	if err != nil {
+		syslog.Write([]byte("Backend (checkpassword-server) is unreachable"))
 		os.Exit(3)
 	}
 
@@ -77,6 +83,7 @@ func main() {
 		// Unmarshal response from checkpassword-server
 		err := json.Unmarshal(resp.Body(), &response)
 		if err != nil {
+			syslog.Write([]byte("Failed to unmarshal checkpassword-server response"))
 			os.Exit(4)
 		}
 
@@ -101,6 +108,7 @@ func main() {
 		// Go to the home directory
 		err = os.Chdir(response["home"].(string))
 		if err != nil {
+			syslog.Write([]byte("Failed to chdir to users homedir "+response["home"].(string)))
 			os.Exit(5)
 		}
 
@@ -116,10 +124,12 @@ func main() {
 		} else {
 			err := syscall.Setgid(int(response["gid"].(float64)))
 			if err != nil {
+				syslog.Write([]byte("Failed to setgid"))
 				os.Exit(6)
 			}
 			err = syscall.Setuid(int(response["uid"].(float64)))
 			if err != nil {
+				syslog.Write([]byte("Failed to setuid"))
 				os.Exit(6)
 			}
 		}
@@ -127,6 +137,7 @@ func main() {
 		// Run the programm from parameters
 		err = syscall.Exec(os.Args[1], os.Args[1:], os.Environ())
 		if err != nil {
+			syslog.Write([]byte("Failed to exec: "+err.Error()))
 			log.Fatal(err)
 		}
 
