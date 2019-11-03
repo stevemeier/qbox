@@ -179,7 +179,10 @@ func service_name() string {
 		465: "smtp",
 		587: "smtp",
 		993: "imaps",
-		995: "pops"}
+		995: "pops",
+	       1430: "imap",
+               9930: "imaps",
+               9950: "pops"}
 
 	var ssllocalport int64
 	ssllocalport, _ = strconv.ParseInt(os.Getenv("SSLLOCALPORT"), 10, 64)
