@@ -19,7 +19,11 @@ import "strconv"
 
 func main() {
 	// Setup syslogger
-	syslog, err := syslog.New(syslog.LOG_MAIL, "checkpassword-client")
+	// The priority value is calculated using the formula (Priority = Facility * 8 + Level)
+	// https://success.trendmicro.com/solution/TP000086250-What-are-Syslog-Facilities-and-Levels
+	// Mail is facility 2 and level should be error, which is 3
+	// 2*8 + 3 = 19
+	syslog, err := syslog.New(19, "checkpassword-client")
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(3)
@@ -121,17 +125,19 @@ func main() {
 			os.Setenv("userdb_uid", fmt.Sprintf("%.0f", response["uid"]))
 			os.Setenv("userdb_gid", fmt.Sprintf("%.0f", response["gid"]))
 			os.Setenv("EXTRA", "userdb_uid userdb_gid")
-		} else {
-			err := syscall.Setgid(int(response["gid"].(float64)))
-			if err != nil {
-				syslog.Write([]byte("Failed to setgid: "+err.Error()))
-				os.Exit(6)
-			}
-			err = syscall.Setuid(int(response["uid"].(float64)))
-			if err != nil {
-				syslog.Write([]byte("Failed to setuid: "+err.Error()))
-				os.Exit(6)
-			}
+
+		// setuid/setgid on with Golang on Linux don't work
+//		} else {
+//			err := syscall.Setgid(int(response["gid"].(float64)))
+//			if err != nil {
+//				syslog.Write([]byte("Failed to setgid: "+err.Error()))
+//				os.Exit(6)
+//			}
+//			err = syscall.Setuid(int(response["uid"].(float64)))
+//			if err != nil {
+//				syslog.Write([]byte("Failed to setuid: "+err.Error()))
+//				os.Exit(6)
+//			}
 		}
 
 		// Run the programm from parameters
