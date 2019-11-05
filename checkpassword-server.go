@@ -213,6 +213,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		// If maximum authentication failures are reached, call failscript
 		if len(authfail[reqdata.Source]) >= maxfail &&
 		   len(failscript) > 0 {
+                        // We copy the data to a temporary structure to prevent
+                        // a race-condition. If a client is trying rapidly, the
+                        // failscript could otherwise be called multiple times
+                        var authhistory []authfaildata = authfail[reqdata.Source]
+			delete(authfail, reqdata.Source)
+
 			fmt.Println("Calling "+failscript+" for "+reqdata.Source)
 			cmd := exec.Command(failscript, reqdata.Source)
 			cmdstdin, err := cmd.StdinPipe()
@@ -223,7 +229,8 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Println("Failed to run failscript: ", err)
 			}
-			for _, v := range authfail[reqdata.Source] {
+			//for _, v := range authfail[reqdata.Source] {
+			for _, v := range authhistory {
 				_, err := cmdstdin.Write([]byte(v.message))
 				if err != nil {
 					fmt.Println("Failed to write to stdin: ", err)
@@ -234,7 +241,8 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				fmt.Println("Failed to wait for failscript: ", err)
 			}
-			delete(authfail, reqdata.Source)
+			//delete(authfail, reqdata.Source)
+			// ^^ moved to top
 		}
 	}
 }
