@@ -180,7 +180,8 @@ CREATE TABLE `passwd` (
   `locked` tinyint(4) NOT NULL DEFAULT '0',
   `dupfilter` tinyint(4) NOT NULL DEFAULT '0',
   `oath_token` varchar(64) NOT NULL,
-  `email_as_login` char(3) NOT NULL DEFAULT ''
+  `email_as_login` char(3) NOT NULL DEFAULT '',
+  `alias_of` char(64) NOT NULL DEFAULT ''
   PRIMARY KEY (`uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
