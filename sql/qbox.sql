@@ -167,7 +167,7 @@ CREATE TABLE `passwd` (
   `pops` char(3) NOT NULL DEFAULT 'yes',
   `imap` char(3) NOT NULL DEFAULT 'yes',
   `imaps` char(3) NOT NULL DEFAULT 'yes',
-  `extmail` varchar(255) NOT NULL DEFAULT '',
+  `extmail` varchar(320) NOT NULL DEFAULT '',
   `antivir` int(11) NOT NULL DEFAULT '0',
   `antispam` int(11) NOT NULL DEFAULT '0',
   `arstart` bigint(20) NOT NULL DEFAULT '0',
