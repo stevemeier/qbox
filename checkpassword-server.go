@@ -134,11 +134,12 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		uid		int64
 		gid		int64
 		oathtoken	string
+		aliasof		string
 	}
 	var dbdata dbschema
 
 	// Prepare and execute query
-	stmt1, err := db.Prepare("SELECT password,homedir,sysuid,sysgid,quota,uid,gid,oath_token FROM passwd WHERE username = ? AND ? != '' limit 1")
+	stmt1, err := db.Prepare("SELECT password,homedir,sysuid,sysgid,quota,uid,gid,oath_token,alias_of FROM passwd WHERE username = ? AND ? != '' limit 1")
 	if err != nil {
 		fmt.Println("Prepare SELECT FROM passwd failed: "+err.Error())
 	}
@@ -157,7 +158,8 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 				  &dbdata.quota,
 				  &dbdata.uid,
 				  &dbdata.gid,
-				  &dbdata.oathtoken)
+				  &dbdata.oathtoken,
+			          &dbdata.aliasof)
 		if err != nil {
 			fmt.Println("Scaning SELECT FROM passwd result failed: "+err.Error())
 		}
@@ -175,6 +177,34 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	if authok {
 		// Write to log
 		fmt.Fprintf(os.Stderr, "Authentication succeeded for %s on %s from %s\n", reqdata.Username, reqdata.Service, reqdata.Source);
+
+		// Support aliasing
+		if (dbdata.aliasof != "") {
+			stmt2, err := db.Prepare("SELECT password,homedir,sysuid,sysgid,quota,uid,gid,oath_token,alias_of FROM passwd WHERE username = ? limit 1")
+			if err != nil {
+				fmt.Println("Prepare SELECT FROM passwd failed for alias: "+err.Error())
+			}
+			rows2, err := stmt2.Query(dbdata.aliasof)
+			if err != nil {
+				fmt.Println("Executing SELECT FROM passwd failed for alias: "+err.Error())
+			}
+
+			for rows2.Next() {
+				err := rows1.Scan(&dbdata.password,
+						  &dbdata.homedir,
+						  &dbdata.sysuid,
+						  &dbdata.sysgid,
+						  &dbdata.quota,
+						  &dbdata.uid,
+						  &dbdata.gid,
+						  &dbdata.oathtoken,
+					          &dbdata.aliasof)
+
+				if err != nil {
+					fmt.Println("Scaning SELECT FROM passwd result failed for alias: "+err.Error())
+				}
+			}
+		}
 
 		// Send response to checkpassword-client
 		w.WriteHeader(http.StatusOK)
