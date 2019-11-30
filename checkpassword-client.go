@@ -122,9 +122,10 @@ func main() {
 		// If not, setuid/gid to for the user
 		match, _ := regexp.MatchString("(?i)checkpassword-reply", args)
 		if match {
-			os.Setenv("userdb_uid", fmt.Sprintf("%.0f", response["uid"]))
-			os.Setenv("userdb_gid", fmt.Sprintf("%.0f", response["gid"]))
-			os.Setenv("EXTRA", "userdb_uid userdb_gid")
+			os.Setenv("userdb_uid",  fmt.Sprintf("%.0f", response["uid"]))
+			os.Setenv("userdb_gid",  fmt.Sprintf("%.0f", response["gid"]))
+			os.Setenv("userdb_mail", fmt.Sprintf("maildir:%s:LAYOUT=fs:INBOX=%s/INBOX", response["home"], response["home"]))
+			os.Setenv("EXTRA", "userdb_uid userdb_gid userdb_mail")
 
 		// setuid/setgid on with Golang on Linux don't work
 //		} else {
