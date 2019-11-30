@@ -206,6 +206,9 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			rows2.Close()
+
+//			reqdata.Username = dbdata.aliasof
+//			^^ Dovecot does not like the username being changed
 		}
 
 		// Send response to checkpassword-client
