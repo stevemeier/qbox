@@ -191,7 +191,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 			defer stmt2.Close()
 
 			for rows2.Next() {
-				err := rows1.Scan(&dbdata.password,
+				err := rows2.Scan(&dbdata.password,
 						  &dbdata.homedir,
 						  &dbdata.sysuid,
 						  &dbdata.sysgid,
