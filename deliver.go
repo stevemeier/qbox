@@ -1,13 +1,15 @@
 package main
 
+import "database/sql"
+import _ "github.com/go-sql-driver/mysql"
 import "bufio"
 import "io"
 import "io/ioutil"
 import "fmt"
 import "os"
 import "regexp"
-//import "strings"
 import "strconv"
+import "strings"
 import "time"
 import "crypto/sha1"
 
@@ -15,6 +17,9 @@ import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
+
+// Make DB available globally, not just in main
+var db *sql.DB
 
 type email struct {
 	Length		int
@@ -26,6 +31,9 @@ type email struct {
 func main() {
 	// Default exit code is 111
 	var exitcode int = 111
+
+	// Destinations is an array where email should go
+	var destinations []string
 
 	var message email
 	var err error
@@ -41,6 +49,67 @@ func main() {
 	if (len(message.Recipient) == 0) {
 		fmt.Println("RECIPIENT not set!")
 		os.Exit(1)
+	}
+
+	addrparts := strings.Split(message.Recipient, "@")
+        if len(addrparts) < 2 {
+                os.Exit(111)
+        }
+        user, domain := addrparts[0], addrparts[1]
+
+        // Read config files
+        var dbserver string = "127.0.0.1"
+        if fileExists(configdir + "/dbserver") {
+                buf, err := ioutil.ReadFile(configdir + "/dbserver")
+                if err == nil {
+                        dbserver = string(buf)
+                }
+        }
+
+        var dbuser string = "qbox"
+        if fileExists(configdir + "/dbuser") {
+                buf, err := ioutil.ReadFile(configdir + "/dbuser")
+                if err == nil {
+                        dbuser = string(buf)
+                }
+        }
+
+        var dbpass string
+        if fileExists(configdir + "/dbpass") {
+                buf, err := ioutil.ReadFile(configdir + "/dbpass")
+                if err == nil {
+                        dbpass = string(buf)
+                }
+        }
+
+        // Initialize DB
+        db, err := sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
+        if err == nil {
+                err = db.Ping()
+                if err != nil {
+                        os.Exit(exitcode)
+                }
+        } else {
+                os.Exit(exitcode)
+        }
+        defer db.Close()
+
+	// Check for domain rewrite
+	domain = rewrite_domain(domain)
+
+	// Get destinations
+	destinations = get_destinations(user, domain)
+
+	// Check wildcard
+	if len(destinations) == 0 {
+		user = `*`
+		destinations = get_destinations(user, domain)
+	}
+
+	// Check if we have at least one destination
+	if len(destinations) == 0 {
+		fmt.Println("Could not find mapping for "+message.Recipient)
+		os.Exit(100)
 	}
 
 	spew.Dump(message)
@@ -104,4 +173,55 @@ func fileExists(filename string) bool {
         }
 
         return !info.IsDir()
+}
+
+func rewrite_domain (domain string) string {
+        // Query DB for domain rewrite
+        var rewrite string
+        stmt1, err := db.Prepare("SELECT rewrite FROM domains WHERE domain = ? AND rewrite != ''")
+        if err != nil {
+		os.Exit(111)
+        }
+        rows1, err := stmt1.Query(domain)
+        if err != nil {
+                os.Exit(111)
+        }
+        defer stmt1.Close()
+
+        for rows1.Next() {
+                err := rows1.Scan(&rewrite)
+                if err != nil {
+                        os.Exit(111)
+                }
+        }
+
+        if len(rewrite) > 0 {
+                return rewrite
+        }
+	return domain
+}
+
+func get_destinations (user string, domain string) ([]string) {
+	var destinations []string
+	var homedir string
+
+        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+        if err != nil {
+		os.Exit(111)
+        }
+        rows1, err := stmt1.Query(user, domain)
+        if err != nil {
+                os.Exit(111)
+        }
+        defer stmt1.Close()
+
+        for rows1.Next() {
+                err := rows1.Scan(&homedir)
+                if err != nil {
+                        os.Exit(111)
+                }
+		destinations = append(destinations, homedir)
+        }
+
+	return destinations
 }
