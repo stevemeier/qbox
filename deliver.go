@@ -225,3 +225,31 @@ func get_destinations (user string, domain string) ([]string) {
 
 	return destinations
 }
+
+func antispam_enabled (user string, domain string) (bool) {
+	var count int
+	stmt1, err := db.Prepare("SELECT DISTINCT passwd.antispam FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antispam > 0")
+        if err != nil {
+		os.Exit(111)
+        }
+	err = stmt1.QueryRow(user, domain).Scan(&count)
+        if err != nil {
+                os.Exit(111)
+        }
+
+	return count > 0
+}
+
+func antivir_enabled (user string, domain string) (bool) {
+	var count int
+	stmt1, err := db.Prepare("SELECT DISTINCT passwd.antispam FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antivir > 0")
+        if err != nil {
+		os.Exit(111)
+        }
+	err = stmt1.QueryRow(user, domain).Scan(&count)
+        if err != nil {
+                os.Exit(111)
+        }
+
+	return count > 0
+}
