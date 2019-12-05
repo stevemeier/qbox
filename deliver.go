@@ -168,6 +168,20 @@ func write_to_file (message email, filename string) (bool) {
 	return err == nil
 }
 
+func write_to_tempfile (message email) (string) {
+	tmpfile, err := ioutil.TempFile("", "qbox")
+	if err != nil {
+		return ""
+	}
+	defer os.Remove(tmpfile.Name())
+	_, err = tmpfile.Write([]byte(message.Text))
+	if err != nil {
+		return ""
+	}
+
+	return tmpfile.Name()
+}
+
 func fileExists(filename string) bool {
         info, err := os.Stat(filename)
         if os.IsNotExist(err) {
