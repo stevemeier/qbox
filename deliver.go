@@ -173,7 +173,7 @@ func write_to_tempfile (message email) (string) {
 	if err != nil {
 		return ""
 	}
-	defer os.Remove(tmpfile.Name())
+
 	_, err = tmpfile.Write([]byte(message.Text))
 	if err != nil {
 		return ""
