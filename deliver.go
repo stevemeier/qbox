@@ -3,10 +3,12 @@ package main
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 import "bufio"
+import "bytes"
 import "io"
 import "io/ioutil"
 import "fmt"
 import "os"
+import "os/exec"
 import "regexp"
 import "strconv"
 import "strings"
@@ -252,4 +254,20 @@ func antivir_enabled (user string, domain string) (bool) {
         }
 
 	return count > 0
+}
+
+func sysexec (command string, args []string, input []byte) ([]byte, int, error) {
+	var output bytes.Buffer
+
+	cmd := exec.Command(command, args...)
+	cmd.Stdin = bytes.NewBuffer(input)
+	cmd.Stdout = &output
+	err := cmd.Run()
+
+	exitcode := 0
+	if exitError, ok := err.(*exec.ExitError); ok {
+		exitcode = exitError.ExitCode()
+	}
+
+	return output.Bytes(), exitcode, err
 }
