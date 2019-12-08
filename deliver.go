@@ -45,7 +45,7 @@ func main() {
 	}
 
 	message.Length = len(message.Text)
-	message.Recipient = os.Getenv("RECIPIENT")
+	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), "qbox-")
 	message.Sha1 = sha1sum(message.Text)
 
 	if (len(message.Recipient) == 0) {
@@ -284,4 +284,10 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 	}
 
 	return output.Bytes(), exitcode, err
+}
+
+func rfc2822_date () (string) {
+	layout := "Mon, 02 Jan 2006 15:04:05 UTC"
+	time := time.Now().UTC()
+	return time.Format(layout)
 }
