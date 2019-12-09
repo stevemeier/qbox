@@ -34,6 +34,13 @@ func main() {
 	// Default exit code is 111
 	var exitcode int = 111
 
+	// Set up a function to catch panic and exit with default code
+	defer func() {
+		if err := recover(); err != nil {
+			os.Exit(exitcode)
+		}
+	}()
+
 	// Destinations is an array where email should go
 	var destinations []string
 
