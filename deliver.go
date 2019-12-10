@@ -318,3 +318,20 @@ func directory_filelist (directory string) ([]string, error) {
 
         return result, nil
 }
+
+func is_duplicate (directory string, hash string) (bool) {
+	filelist, err := directory_filelist(directory)
+	if err != nil {
+		return false
+	}
+
+	re, _ := regexp.Compile(`.`+hash)
+
+	for _, file := range filelist {
+		if re.MatchString(file) {
+			return true
+		}
+	}
+
+	return false
+}
