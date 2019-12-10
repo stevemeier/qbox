@@ -68,7 +68,7 @@ func main() {
 
         // Read config files
         var dbserver string = "127.0.0.1"
-        if fileExists(configdir + "/dbserver") {
+        if file_exists(configdir + "/dbserver") {
                 buf, err := ioutil.ReadFile(configdir + "/dbserver")
                 if err == nil {
                         dbserver = string(buf)
@@ -76,7 +76,7 @@ func main() {
         }
 
         var dbuser string = "qbox"
-        if fileExists(configdir + "/dbuser") {
+        if file_exists(configdir + "/dbuser") {
                 buf, err := ioutil.ReadFile(configdir + "/dbuser")
                 if err == nil {
                         dbuser = string(buf)
@@ -84,7 +84,7 @@ func main() {
         }
 
         var dbpass string
-        if fileExists(configdir + "/dbpass") {
+        if file_exists(configdir + "/dbpass") {
                 buf, err := ioutil.ReadFile(configdir + "/dbpass")
                 if err == nil {
                         dbpass = string(buf)
@@ -161,7 +161,7 @@ func write_to_file (message email, filename string) (bool) {
 	unix.Umask(077)
 
 	// Never overwrite existing files
-	if fileExists(filename) {
+	if file_exists(filename) {
 		return false
 	}
 
@@ -189,7 +189,7 @@ func write_to_tempfile (message email) (string) {
 	return tmpfile.Name()
 }
 
-func fileExists(filename string) bool {
+func file_exists(filename string) bool {
         info, err := os.Stat(filename)
         if os.IsNotExist(err) {
                 return false
