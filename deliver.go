@@ -298,3 +298,23 @@ func rfc2822_date () (string) {
 	time := time.Now().UTC()
 	return time.Format(layout)
 }
+
+func directory_filelist (directory string) ([]string, error) {
+        var result []string
+
+        files, err := ioutil.ReadDir(directory)
+        if err != nil {
+                return result, err
+        }
+
+        for _, file := range files {
+                filestat, err := os.Stat(file.Name())
+                if err == nil {
+                        if filestat.Mode().IsRegular() {
+                                result = append(result, file.Name())
+                        }
+                }
+        }
+
+        return result, nil
+}
