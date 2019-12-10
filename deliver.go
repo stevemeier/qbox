@@ -151,6 +151,17 @@ func sha1sum (message string) (string) {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
+func sha1sum_body (message string) (string) {
+	// Ignore Headers so that duplicate detection can actually work
+        re, _ := regexp.Compile(`\n\n`)
+        fsi := re.FindStringIndex(message)
+        body := message[fsi[1]:]
+
+        hash := sha1.New()
+        io.WriteString(hash, body)
+        return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
 func epoch () (string) {
 	now := time.Now()
 	// Using UnixNano instead of just Unix gives us greater entropy in the filename
