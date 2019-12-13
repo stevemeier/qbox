@@ -1,6 +1,6 @@
 all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
 clean:
-	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
+	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd greylist heluna messageid mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
 _goget:
 	go get blitiri.com.ar/go/spf
 	go get github.com/c-robinson/iplib
@@ -40,6 +40,9 @@ greylist:
 heluna:
 	go build heluna.go
 	strip heluna
+messageid:
+	gcc -O2 -D_FORTIFY_SOURCE -luuid -o messageid messageid.c
+	strip messageid
 mfcheck:
 	go build mfcheck.go
 	strip mfcheck
