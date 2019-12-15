@@ -15,7 +15,7 @@ import "strings"
 import "time"
 import "crypto/sha1"
 
-//import "github.com/davecgh/go-spew/spew"
+import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
@@ -37,6 +37,8 @@ func main() {
 	// Set up a function to catch panic and exit with default code
 	defer func() {
 		if err := recover(); err != nil {
+		//	fmt.Println("Recovered: "+err.(string) )
+			fmt.Println(err)
 			os.Exit(exitcode)
 		}
 	}()
@@ -62,6 +64,7 @@ func main() {
 
 	addrparts := strings.Split(message.Recipient, "@")
         if len(addrparts) < 2 {
+		fmt.Println("ERROR: Could not split recipient address")
                 os.Exit(111)
         }
         user, domain := addrparts[0], addrparts[1]
@@ -92,22 +95,26 @@ func main() {
         }
 
         // Initialize DB
-        db, err := sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
+        db, err = sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
         if err == nil {
                 err = db.Ping()
                 if err != nil {
+			fmt.Println("ERROR: db.Ping failed!")
                         os.Exit(exitcode)
                 }
         } else {
+		fmt.Println("ERROR: Could not connect to MySQL "+err.Error())
                 os.Exit(exitcode)
         }
         defer db.Close()
 
 	// Check for domain rewrite
+	fmt.Println(rewrite_domain(domain))
 	domain = rewrite_domain(domain)
 
 	// Get destinations
 	destinations = get_destinations(user, domain)
+	spew.Dump(destinations)
 
 	// Check wildcard
 	if len(destinations) == 0 {
@@ -134,7 +141,7 @@ func main() {
 	for _, destination := range destinations {
 		switch destination_type(destination) {
 		case "maildir":
-			writesuccess := write_to_file(message, destination+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
+			writesuccess := write_to_file(message, destination+"/INBOX/tmp/"+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
 			if writesuccess {
 				fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
 			} else {
@@ -245,13 +252,16 @@ func file_exists(filename string) bool {
 
 func rewrite_domain (domain string) string {
         // Query DB for domain rewrite
-        var rewrite string
+        var rewrite sql.NullString
         stmt1, err := db.Prepare("SELECT rewrite FROM domains WHERE domain = ? AND rewrite != ''")
         if err != nil {
+		fmt.Println("DEBUG: Failed to prepare statement in rewrite_domain")
 		os.Exit(111)
         }
+
         rows1, err := stmt1.Query(domain)
         if err != nil {
+		fmt.Println("DEBUG: Failed to execute query in rewrite_domain")
                 os.Exit(111)
         }
         defer stmt1.Close()
@@ -259,13 +269,15 @@ func rewrite_domain (domain string) string {
         for rows1.Next() {
                 err := rows1.Scan(&rewrite)
                 if err != nil {
+			fmt.Println("DEBUG: Failed to scan row in rewrite_domain "+err.Error())
                         os.Exit(111)
                 }
         }
 
-        if len(rewrite) > 0 {
-                return rewrite
-        }
+	// See https://stackoverflow.com/questions/40092155/difference-between-string-and-sql-nullstring
+	if rewrite.Valid {
+		return rewrite.String
+	}
 	return domain
 }
 
