@@ -15,7 +15,7 @@ import "strings"
 import "time"
 import "crypto/sha1"
 
-import "github.com/davecgh/go-spew/spew"
+//import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
@@ -121,13 +121,47 @@ func main() {
 		os.Exit(100)
 	}
 
-	spew.Dump(message)
 	hostname, _ := os.Hostname()
-	writesuccess := write_to_file(message, `/tmp/`+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
-	if (writesuccess) {
-		exitcode = 0
+//	spew.Dump(message)
+//	hostname, _ := os.Hostname()
+//	writesuccess := write_to_file(message, `/tmp/`+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
+//	if (writesuccess) {
+//		exitcode = 0
+//	}
+//	spew.Dump(writesuccess)
+//	os.Exit(exitcode)
+
+	for _, destination := range destinations {
+		switch destination_type(destination) {
+		case "maildir":
+			writesuccess := write_to_file(message, destination+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
+			if writesuccess {
+				fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
+			} else {
+				fmt.Println("ERROR: Could not delivered to "+destination+" for "+message.Recipient)
+				exitcode = 1
+			}
+
+		case "forward":
+			_, fwdsuccess, _ := sysexec("/var/qmail/bin/qmail-inject", []string{"-fpostmaster@mail.lordy.de", destination}, []byte(message.Text))
+			if fwdsuccess == 0 {
+				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
+			} else {
+				fmt.Println("ERROR: Could not forward to "+destination+" for "+message.Recipient)
+				exitcode = fwdsuccess
+			}
+
+		case "pipe":
+			_, execsuccess, _ := sysexec(destination, nil, []byte(message.Text))
+			if execsuccess == 0 {
+				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
+			} else {
+				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient)
+				exitcode = execsuccess
+			}
+		}
 	}
-	spew.Dump(writesuccess)
+
 	os.Exit(exitcode)
 }
 
@@ -345,4 +379,25 @@ func is_duplicate (directory string, hash string) (bool) {
 	}
 
 	return false
+}
+
+func destination_type (destination string) (string) {
+	var matched bool
+
+	matched, _ = regexp.MatchString(`^/`, destination)
+	if matched {
+		return "maildir"
+	}
+
+	matched, _ = regexp.MatchString(`@`, destination)
+	if matched {
+		return "forward"
+	}
+
+	matched, _ = regexp.MatchString(`^|`, destination)
+	if matched {
+		return "pipe"
+	}
+
+	return ""
 }
