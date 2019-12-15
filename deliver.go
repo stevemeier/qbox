@@ -15,10 +15,11 @@ import "strings"
 import "time"
 import "crypto/sha1"
 
-import "github.com/davecgh/go-spew/spew"
+//import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
+const quarantine = "/var/qmail/quarantine"
 
 // Make DB available globally, not just in main
 var db *sql.DB
@@ -37,7 +38,6 @@ func main() {
 	// Set up a function to catch panic and exit with default code
 	defer func() {
 		if err := recover(); err != nil {
-		//	fmt.Println("Recovered: "+err.(string) )
 			fmt.Println(err)
 			os.Exit(exitcode)
 		}
@@ -109,12 +109,10 @@ func main() {
         defer db.Close()
 
 	// Check for domain rewrite
-	fmt.Println(rewrite_domain(domain))
 	domain = rewrite_domain(domain)
 
 	// Get destinations
 	destinations = get_destinations(user, domain)
-	spew.Dump(destinations)
 
 	// Check wildcard
 	if len(destinations) == 0 {
@@ -128,20 +126,29 @@ func main() {
 		os.Exit(100)
 	}
 
-	hostname, _ := os.Hostname()
-//	spew.Dump(message)
-//	hostname, _ := os.Hostname()
-//	writesuccess := write_to_file(message, `/tmp/`+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
-//	if (writesuccess) {
-//		exitcode = 0
-//	}
-//	spew.Dump(writesuccess)
-//	os.Exit(exitcode)
+	if antispam_enabled(user, domain) {
+		tempfile := write_to_tempfile(message)
+		defer os.Remove(tempfile)
+		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", nil, []byte(message.Text))
+		if antispamsuccess == 0 {
+			message.Text = string(antispamresult)
+		}
+	}
+
+	if antivir_enabled(user, domain) {
+		tempfile := write_to_tempfile(message)
+		defer os.Remove(tempfile)
+		_, antivirsuccess, _ := sysexec("/usr/bin/clamscan", []string{tempfile}, nil)
+		if antivirsuccess == 1 {
+			// Infected mails go to the quarantine
+			destinations = []string{quarantine}
+		}
+	}
 
 	for _, destination := range destinations {
 		switch destination_type(destination) {
 		case "maildir":
-			writesuccess := write_to_file(message, destination+"/INBOX/tmp/"+epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+hostname+`.`+message.Sha1)
+			writesuccess := write_to_maildir(message, destination+"/INBOX")
 			if writesuccess {
 				fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
 			} else {
@@ -413,3 +420,33 @@ func destination_type (destination string) (string) {
 
 	return ""
 }
+
+func write_to_maildir (message email, directory string) (bool) {
+	// Example filename:
+	// 1576429450084839306.27056.bart.lordy.de.7a3e892ba01ce9899d101745da2757a81ac55779
+	filename := epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+sys_hostname()+`.`+message.Sha1
+	writesuccess := write_to_file(message, directory+"/tmp/"+filename)
+
+	if writesuccess {
+		linkerr := os.Link(directory+"/tmp/"+filename, directory+"/new/"+filename)
+		if linkerr == nil {
+			rmerr := os.Remove(directory+"/tmp/"+filename)
+			if rmerr == nil {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func sys_hostname () (string) {
+	hostname, _ := os.Hostname()
+
+	if len(hostname) > 0 {
+		return hostname
+	}
+
+	return "localhost"
+}
+
