@@ -133,11 +133,12 @@ func main() {
 		os.Exit(100)
 	}
 
-	if antispam_enabled(user, domain) {
+	if antispam_enabled(user, domain) && spamd_available() {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
 		debug("Starting spamc\n")
-		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", nil, []byte(message.Text))
+//		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", nil, []byte(message.Text))
+		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Text))
 		if antispamsuccess == 0 {
 			message.Text = string(antispamresult)
 		}
@@ -479,5 +480,14 @@ func debug (message string) (bool) {
 		fmt.Fprintf(os.Stderr, "DEBUG: "+message)
 		return true
 	}
+	return false
+}
+
+func spamd_available () (bool) {
+	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
+	if spamdstatus == 0 {
+		return true
+	}
+
 	return false
 }
