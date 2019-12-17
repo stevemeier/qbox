@@ -20,6 +20,7 @@ import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
 const quarantine = "/var/qmail/quarantine"
+const debug_enabled = false
 
 // Make DB available globally, not just in main
 var db *sql.DB
@@ -129,6 +130,7 @@ func main() {
 	if antispam_enabled(user, domain) {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
+		debug("Starting spamc\n")
 		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", nil, []byte(message.Text))
 		if antispamsuccess == 0 {
 			message.Text = string(antispamresult)
@@ -138,6 +140,7 @@ func main() {
 	if antivir_enabled(user, domain) {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
+		debug("Starting clamscan\n")
 		_, antivirsuccess, _ := sysexec("/usr/bin/clamscan", []string{tempfile}, nil)
 		if antivirsuccess == 1 {
 			// Infected mails go to the quarantine
@@ -146,6 +149,7 @@ func main() {
 	}
 
 	for _, destination := range destinations {
+		debug("Starting delivery to "+destination+"\n")
 		switch destination_type(destination) {
 		case "maildir":
 			writesuccess := write_to_maildir(message, destination+"/INBOX")
@@ -450,3 +454,10 @@ func sys_hostname () (string) {
 	return "localhost"
 }
 
+func debug (message string) (bool) {
+	if debug_enabled {
+		fmt.Fprintf(os.Stderr, "DEBUG: "+message)
+		return true
+	}
+	return false
+}
