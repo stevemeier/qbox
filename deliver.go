@@ -332,11 +332,13 @@ func antispam_enabled (user string, domain string) (bool) {
 	debug("Preparing statement in antispam_enabled\n")
 	stmt1, err := db.Prepare("SELECT DISTINCT passwd.antispam FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antispam > 0")
         if err != nil {
+		fmt.Println(err)
 		os.Exit(111)
         }
 	debug("Running query in antispam_enabled\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
+		fmt.Println(err)
                 os.Exit(111)
         }
 
@@ -348,11 +350,13 @@ func antivir_enabled (user string, domain string) (bool) {
 	debug("Preparing statement in antivir_enabled\n")
 	stmt1, err := db.Prepare("SELECT DISTINCT passwd.antispam FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antivir > 0")
         if err != nil {
+		fmt.Println(err)
 		os.Exit(111)
         }
 	debug("Running query in antivir_enabled\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
+		fmt.Println(err)
                 os.Exit(111)
         }
 
