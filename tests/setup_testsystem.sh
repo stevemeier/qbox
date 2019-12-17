@@ -17,10 +17,10 @@ mkdir /etc/qbox
 echo -n root > /etc/qbox/dbuser
 echo -n > /etc/qbox/dbpass
 
-mkdir -p /home/mail/testuser1
-mkdir -p /home/mail/testuser2
-mkdir -p /home/mail/testuser3
-mkdir -p /home/mail/testuser4
+mkdir -p /home/mail/testuser1/INBOX/new /home/mail/testuser1/INBOX/tmp /home/mail/testuser1/INBOX/cur
+mkdir -p /home/mail/testuser2/INBOX/new /home/mail/testuser2/INBOX/tmp /home/mail/testuser2/INBOX/cur
+mkdir -p /home/mail/testuser3/INBOX/new /home/mail/testuser3/INBOX/tmp /home/mail/testuser3/INBOX/cur
+mkdir -p /home/mail/testuser4/INBOX/new /home/mail/testuser4/INBOX/tmp /home/mail/testuser4/INBOX/cur
 chown -R mail:mail /home/mail
 
 echo 'INSERT INTO qbox.passwd (username, password, homedir, antispam, antivir) VALUES ("testuser1","testpass1","/home/mail/testuser1",0,0);' | mysql
