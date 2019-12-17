@@ -110,11 +110,11 @@ func main() {
         defer db.Close()
 
 	// Check for domain rewrite
-	debug("Calling rewrite_domain\n")
+	debug("Calling rewrite_domain with parameter: "+domain+"\n")
 	domain = rewrite_domain(domain)
 
 	// Get destinations
-	debug("Calling get_destinations\n")
+	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
 	destinations = get_destinations(user, domain)
 
 	// Check wildcard
@@ -299,10 +299,12 @@ func get_destinations (user string, domain string) ([]string) {
 	var destinations []string
 	var homedir string
 
+	debug("Preparing statement in get_destinations\n")
         stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
         if err != nil {
 		os.Exit(111)
         }
+	debug("Running query in get_destinations\n")
         rows1, err := stmt1.Query(user, domain)
         if err != nil {
                 os.Exit(111)
@@ -310,6 +312,7 @@ func get_destinations (user string, domain string) ([]string) {
         defer stmt1.Close()
 
         for rows1.Next() {
+		debug("Scanning row in get_destinations\n")
                 err := rows1.Scan(&homedir)
                 if err != nil {
                         os.Exit(111)
@@ -317,6 +320,7 @@ func get_destinations (user string, domain string) ([]string) {
 		destinations = append(destinations, homedir)
         }
 
+	debug("Reach end of get_destinations\n")
 	return destinations
 }
 
