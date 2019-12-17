@@ -162,7 +162,7 @@ func main() {
 			if writesuccess {
 				fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
 			} else {
-				fmt.Println("ERROR: Could not delivered to "+destination+" for "+message.Recipient)
+				fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient)
 				exitcode = 1
 			}
 
