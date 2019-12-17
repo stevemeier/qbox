@@ -110,13 +110,16 @@ func main() {
         defer db.Close()
 
 	// Check for domain rewrite
+	debug("Calling rewrite_domain\n")
 	domain = rewrite_domain(domain)
 
 	// Get destinations
+	debug("Calling get_destinations\n")
 	destinations = get_destinations(user, domain)
 
 	// Check wildcard
 	if len(destinations) == 0 {
+		debug("Checking for wildcards\n")
 		user = `*`
 		destinations = get_destinations(user, domain)
 	}
