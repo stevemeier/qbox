@@ -139,7 +139,8 @@ func main() {
 		debug("Starting spamc\n")
 //		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", nil, []byte(message.Text))
 		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Text))
-		if antispamsuccess == 0 {
+		// Spamc will exit 0 on ham, 1 on spam
+		if antispamsuccess < 2 {
 			message.Text = string(antispamresult)
 		}
 	}
