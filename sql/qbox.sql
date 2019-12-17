@@ -31,8 +31,8 @@ DROP TABLE IF EXISTS `autoconfig`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `autoconfig` (
-  `field` text,
-  `value` text
+  `field` varchar(32) primary key,
+  `value` varchar(256)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -181,7 +181,7 @@ CREATE TABLE `passwd` (
   `dupfilter` tinyint(4) NOT NULL DEFAULT '0',
   `oath_token` varchar(64) NOT NULL,
   `email_as_login` char(3) NOT NULL DEFAULT '',
-  `alias_of` char(64) NOT NULL DEFAULT ''
+  `alias_of` char(64) NOT NULL DEFAULT '',
   PRIMARY KEY (`uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
