@@ -12,6 +12,7 @@ service mariadb start
 
 # Antispam / Antivir
 yum -y install spamassassin clamav
+freshclam
 
 mkdir /etc/qbox
 echo -n root > /etc/qbox/dbuser
