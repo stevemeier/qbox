@@ -15,7 +15,7 @@ import "strings"
 import "time"
 import "crypto/sha1"
 
-//import "github.com/davecgh/go-spew/spew"
+import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
@@ -116,6 +116,9 @@ func main() {
 	// Get destinations
 	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
 	destinations = get_destinations(user, domain)
+	if debug_enabled {
+		spew.Dump(destinations)
+	}
 
 	// Check wildcard
 	if len(destinations) == 0 {
@@ -320,7 +323,7 @@ func get_destinations (user string, domain string) ([]string) {
 		destinations = append(destinations, homedir)
         }
 
-	debug("Reach end of get_destinations\n")
+	debug("Reached end of get_destinations\n")
 	return destinations
 }
 
