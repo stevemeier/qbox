@@ -178,11 +178,12 @@ func main() {
 			}
 
 		case "pipe":
+			destination = strings.TrimPrefix(destination,`|`)
 			_, execsuccess, _ := sysexec(destination, nil, []byte(message.Text))
 			if execsuccess == 0 {
-				fmt.Println("Message piped to "+strings.TrimPrefix(destination,`|`)+" for "+message.Recipient)
+				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
 			} else {
-				fmt.Println("ERROR: Could not pipe to "+strings.TrimPrefix(destination,`|`)+" for "+message.Recipient)
+				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient)
 				exitcode = execsuccess
 			}
 		}
