@@ -40,3 +40,9 @@ echo 'INSERT INTO qbox.mapping VALUES ("spamvir","localhost",4,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("false","localhost",5,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("true","localhost",6,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("forward","localhost",7,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("truefalse","localhost",5,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("truefalse","localhost",6,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",1,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",2,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",3,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",4,"");' | mysql
