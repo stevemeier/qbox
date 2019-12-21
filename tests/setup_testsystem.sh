@@ -32,6 +32,7 @@ echo 'INSERT INTO qbox.passwd (username, password, homedir, antispam, antivir) V
 echo 'INSERT INTO qbox.passwd (username, password, homedir) VALUES ("testuser5","testpass5","|/usr/bin/false");' | mysql
 echo 'INSERT INTO qbox.passwd (username, password, homedir) VALUES ("testuser6","testpass6","|/usr/bin/true");' | mysql
 echo 'INSERT INTO qbox.passwd (username, password, homedir) VALUES ("testuser7","testpass7","root@localhost");' | mysql
+echo 'INSERT INTO qbox.passwd (username, password, homedir) VALUES ("testuser8","testpass8","/dev/null");' | mysql
 
 echo 'INSERT INTO qbox.mapping VALUES ("nofilter","localhost",1,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("antispam","localhost",2,"");' | mysql
@@ -46,3 +47,4 @@ echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",1,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",2,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",3,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",4,"");' | mysql
+echo 'INSERT INTO qbox.mapping VALUES ("devnull","localhost",8,"");' | mysql
