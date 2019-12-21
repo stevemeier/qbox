@@ -186,6 +186,10 @@ func main() {
 				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient)
 				exitcode = execsuccess
 			}
+
+		default:
+			fmt.Println("Can not handle "+destination+" for "+message.Recipient)
+			exitcode = 111
 		}
 	}
 
@@ -487,9 +491,5 @@ func debug (message string) (bool) {
 
 func spamd_available () (bool) {
 	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
-	if spamdstatus == 0 {
-		return true
-	}
-
-	return false
+	return spamdstatus == 0 
 }
