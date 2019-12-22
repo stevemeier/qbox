@@ -212,7 +212,7 @@ func read_from_stdin () (string, error) {
 
 func sha1sum (message string) (string) {
 	hash := sha1.New()
-	io.WriteString(hash, message)
+	_, _ = io.WriteString(hash, message)
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
@@ -223,7 +223,7 @@ func sha1sum_body (message string) (string) {
         body := message[fsi[1]:]
 
         hash := sha1.New()
-        io.WriteString(hash, body)
+        _, _ = io.WriteString(hash, body)
         return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
