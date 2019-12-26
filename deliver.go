@@ -4,9 +4,10 @@ import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 import "bufio"
 import "bytes"
+import "fmt"
 import "io"
 import "io/ioutil"
-import "fmt"
+import "net/mail"
 import "os"
 import "os/exec"
 import "regexp"
@@ -30,6 +31,7 @@ type email struct {
 	Recipient	string
 	Sha1		string
 	Text		string
+	Object		*mail.Message
 }
 
 func main() {
@@ -57,6 +59,7 @@ func main() {
 	message.Length = len(message.Text)
 	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), "qbox-")
 	message.Sha1 = sha1sum(message.Text)
+	message.Object, _ = mail.ReadMessage(strings.NewReader(message.Text))
 
 	if (len(message.Recipient) == 0) {
 		fmt.Println("RECIPIENT not set!")
