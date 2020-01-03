@@ -166,7 +166,7 @@ func main() {
 		case "maildir":
 			duplicate := is_duplicate(destination+"/INBOX", message.Sha1)
 			if duplicate {
-				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate")
+				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 			} else {
 				writesuccess := write_to_maildir(message, destination+"/INBOX")
 				if writesuccess  {
