@@ -31,6 +31,7 @@ mkdir -p /home/mail/testuser1/INBOX/new /home/mail/testuser1/INBOX/tmp /home/mai
 mkdir -p /home/mail/testuser2/INBOX/new /home/mail/testuser2/INBOX/tmp /home/mail/testuser2/INBOX/cur
 mkdir -p /home/mail/testuser3/INBOX/new /home/mail/testuser3/INBOX/tmp /home/mail/testuser3/INBOX/cur
 mkdir -p /home/mail/testuser4/INBOX/new /home/mail/testuser4/INBOX/tmp /home/mail/testuser4/INBOX/cur
+mkdir -p /home/mail/testuser9/INBOX/new /home/mail/testuser9/INBOX/tmp /home/mail/testuser9/INBOX/cur
 chown -R mail:mail /home/mail
 
 # Load SQL schema
