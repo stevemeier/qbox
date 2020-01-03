@@ -22,7 +22,7 @@ import "golang.org/x/sys/unix"
 
 const configdir = "/etc/qbox"
 const quarantine = "/var/qmail/quarantine"
-const debug_enabled = false
+var debug_enabled bool = false
 
 // Make DB available globally, not just in main
 var db *sql.DB
@@ -46,6 +46,10 @@ func main() {
 			os.Exit(exitcode)
 		}
 	}()
+
+	if env_defined("QBOX_DEBUG") {
+		debug_enabled = true
+	}
 
 	// Destinations is an array where email should go
 	var destinations []string
@@ -549,3 +553,9 @@ func dupfilter_enabled (user string, domain string) (bool) {
 	return count > 0
 }
 
+func env_defined (key string) bool {
+  value, exists := os.LookupEnv(key)
+  _ = value
+
+  return exists
+}
