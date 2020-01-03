@@ -164,8 +164,9 @@ func main() {
 		debug("Starting delivery to "+destination+"\n")
 		switch destination_type(destination) {
 		case "maildir":
-			duplicate := is_duplicate(destination+"/INBOX", message.Sha1)
-			if duplicate {
+//			duplicate := is_duplicate(destination+"/INBOX", message.Sha1)
+//			if duplicate {
+			if dupfilter_enabled(user, domain) && is_duplicate(destination+"/INBOX", message.Sha1) {
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 			} else {
 				writesuccess := write_to_maildir(message, destination+"/INBOX")
