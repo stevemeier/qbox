@@ -164,12 +164,17 @@ func main() {
 		debug("Starting delivery to "+destination+"\n")
 		switch destination_type(destination) {
 		case "maildir":
-			writesuccess := write_to_maildir(message, destination+"/INBOX")
-			if writesuccess {
-				fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
+			duplicate := is_duplicate(destination+"/INBOX", message.Sha1)
+			if duplicate {
+				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate")
 			} else {
-				fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient)
-				exitcode = 1
+				writesuccess := write_to_maildir(message, destination+"/INBOX")
+				if writesuccess  {
+					fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
+				} else {
+					fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient)
+					exitcode = 1
+				}
 			}
 
 		case "forward":
@@ -524,3 +529,22 @@ func spamd_available () (bool) {
 	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
 	return spamdstatus == 0 
 }
+
+func dupfilter_enabled (user string, domain string) (bool) {
+	var count int
+	debug("Preparing statement in dupfilter_enabled\n")
+	stmt1, err := db.Prepare("SELECT COUNT(passwd.dupfilter) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND dupfilter > 0")
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in dupfilter_enabled\n")
+	err = stmt1.QueryRow(user, domain).Scan(&count)
+        if err != nil {
+		fmt.Println(err)
+                os.Exit(111)
+        }
+
+	return count > 0
+}
+
