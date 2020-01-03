@@ -48,3 +48,9 @@ echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",2,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",3,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",4,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("devnull","localhost",8,"");' | mysql
+
+# Clone and build code
+cd /opt
+git clone https://github.com/stevemeier/qbox.git
+cd qbox
+make
