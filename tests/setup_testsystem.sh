@@ -60,3 +60,7 @@ echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",2,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",3,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("testusers","localhost",4,"");' | mysql
 echo 'INSERT INTO qbox.mapping VALUES ("devnull","localhost",8,"");' | mysql
+
+# Extract test data
+cd /opt/qbox/tests
+tar xzf emails.tgz
