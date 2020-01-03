@@ -1,9 +1,10 @@
-all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
+all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
 clean:
-	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd greylist heluna messageid mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
+	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna messageid mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
 _goget:
 	go get blitiri.com.ar/go/spf
 	go get github.com/c-robinson/iplib
+	go get github.com/davecgh/go-spew/spew
 	go get github.com/DavidGamba/go-getoptions
 	go get github.com/GehirnInc/crypt
 	go get github.com/go-sql-driver/mysql
@@ -34,6 +35,9 @@ checkpassword-server:
 chpasswd:
 	go build chpasswd.go
 	strip chpasswd
+deliver:
+	go build deliver.go
+	strip deliver
 greylist:
 	go build greylist.go
 	strip greylist
