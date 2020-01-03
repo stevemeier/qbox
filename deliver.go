@@ -10,6 +10,7 @@ import "io/ioutil"
 import "net/mail"
 import "os"
 import "os/exec"
+import "path/filepath"
 import "regexp"
 import "strconv"
 import "strings"
@@ -417,8 +418,35 @@ func directory_filelist (directory string) ([]string, error) {
         return result, nil
 }
 
+func directory_filelist_recursive (directory string) ([]string, error) {
+	re := regexp.MustCompile("permission denied")
+	var filelist []string
+
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+		// We ignore "permission denied" errors"
+		if err != nil && !re.MatchString(err.Error()) {
+			return err
+		}
+
+		if !info.IsDir() {
+			// If it's not a directory, stick it into filelist
+			filelist = append(filelist, path)
+		}
+		return nil
+	})
+
+	// if Walk ran into an error we return an empty list and pass the error up
+	if err != nil {
+		return nil, err
+	}
+
+	// On success we return a filelist and a nil error
+	return filelist, nil
+}
+
 func is_duplicate (directory string, hash string) (bool) {
-	filelist, err := directory_filelist(directory)
+//	filelist, err := directory_filelist(directory)
+	filelist, err := directory_filelist_recursive(directory)
 	if err != nil {
 		return false
 	}
