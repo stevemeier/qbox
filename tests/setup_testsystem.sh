@@ -15,6 +15,12 @@ yum -y install spamassassin clamav
 freshclam
 service spamassassin start
 
+# Install qmail
+yum -y install http://repo.openfusion.net/centos7-x86_64/openfusion-release-0.7-1.of.el7.noarch.rpm
+yum -y install qmail
+yum -y install screen
+/usr/bin/screen -d -m /var/qmail/rc
+
 # Clone and build code
 cd /opt
 git clone https://github.com/stevemeier/qbox.git
