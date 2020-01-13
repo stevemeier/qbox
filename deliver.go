@@ -232,8 +232,12 @@ func main() {
 				ar += "Subject: Auto: "+message.Object.Header.Get("Subject")
 			}
 			ar += "\n\n"
-//			send_autoresponse()
-//			record_autoresponse()
+			ar += autoresponder_text(user, domain)
+
+			_, arsuccess, _ := sysexec("/var/qmail/bin/qmail-inject", []string{"-f"+message.Recipient, sender}, []byte(ar))
+			if arsuccess == 0 {
+				record_autoresponse(email_to_uid(user,domain), sender)
+			}
 		}
 	}
 
@@ -642,4 +646,39 @@ func email_to_uid (user string, domain string) (int) {
         }
 
 	return uid
+}
+
+func autoresponder_text (user string, domain string) (string) {
+	var artext string
+	debug("Preparing statement in autresponder_text\n")
+	stmt1, err := db.Prepare("SELECT artext FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in autresponder_text\n")
+	err = stmt1.QueryRow(user, domain).Scan(&artext)
+        if err != nil {
+		fmt.Println(err)
+                os.Exit(111)
+        }
+
+	return artext
+}
+
+func record_autoresponse (from int, to string) bool {
+	debug("Preparing statement in record_autoresponse\n")
+	stmt1, err := db.Prepare("INSERT INTO responses VALUES ('', ?, ?, UNIX_TIMESTAMP() )")
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in record_autoresponse\n")
+	_, err = stmt1.Exec(from, to)
+//        if err != nil {
+//		fmt.Println(err)
+//               os.Exit(111)
+//      }
+
+	return err == nil
 }
