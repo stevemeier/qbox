@@ -78,6 +78,11 @@ func main() {
         }
         user, domain := addrparts[0], addrparts[1]
 
+	var sender string
+	if env_defined("SENDER") {
+		sender = os.Getenv("SENDER")
+	}
+
         // Read config files
         var dbserver string = "127.0.0.1"
         if file_exists(configdir + "/dbserver") {
@@ -204,6 +209,31 @@ func main() {
 		default:
 			fmt.Println("Can not handle "+destination+" for "+message.Recipient)
 			exitcode = 111
+		}
+	}
+
+	// Autoresponder code goes here
+	// Mailing lists are ignored (if List-ID header is present)
+	// If there is no X-Mailer Header, it's likely automated, so no response either
+	noreply := regexp.MustCompile(`^noreply`)
+	if autoresponder_enabled(user, domain) &&
+	   !noreply.MatchString(sender) &&
+	   sender != "" &&
+	   message.Object.Header.Get("List-ID") == "" &&
+	   message.Object.Header.Get("X-Mailer") != "" {
+		if autoresponder_history(user, domain, sender, 604800) {
+			ar := "From: <"+message.Recipient+">\n"
+			ar += "To: <"+sender+">\n"
+			ar += "Message-ID: <"+epoch()+strconv.Itoa(os.Getpid())+"@"+sys_hostname()+">\n"
+			ar += "Date: "+rfc2822_date()+"\n"
+			if message.Object.Header.Get("Subject") == "" {
+				ar += "Subject: Autoresponder reply\n"
+			} else {
+				ar += "Subject: Auto: "+message.Object.Header.Get("Subject")
+			}
+			ar += "\n\n"
+//			send_autoresponse()
+//			record_autoresponse()
 		}
 	}
 
@@ -532,7 +562,7 @@ func debug (message string) (bool) {
 
 func spamd_available () (bool) {
 	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
-	return spamdstatus == 0 
+	return spamdstatus == 0
 }
 
 func dupfilter_enabled (user string, domain string) (bool) {
@@ -558,4 +588,58 @@ func env_defined (key string) bool {
   _ = value
 
   return exists
+}
+
+func autoresponder_enabled (user string, domain string) (bool) {
+	var count int
+	debug("Preparing statement in autoresponder_enabled\n")
+	stmt1, err := db.Prepare("SELECT CHAR_LENGTH(passwd.artext) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND arstart > 0 AND arend >= UNIX_TIMESTAMP()")
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in autoresponder_enabled\n")
+	err = stmt1.QueryRow(user, domain).Scan(&count)
+        if err != nil {
+		fmt.Println(err)
+                os.Exit(111)
+        }
+
+	return count > 0
+}
+
+func autoresponder_history (user string, domain string, sender string, duration int) bool {
+	var count int
+	debug("Preparing statement in autoresponder_history\n")
+	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = "+string(email_to_uid(user,domain))+" AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+string(duration) )
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in autoresponder_history\n")
+	err = stmt1.QueryRow(user, domain).Scan(&count)
+        if err != nil {
+		fmt.Println(err)
+                os.Exit(111)
+        }
+
+	return count > 0
+}
+
+func email_to_uid (user string, domain string) (int) {
+	var uid int
+	debug("Preparing statement in email_to_uid\n")
+	stmt1, err := db.Prepare("SELECT uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in email_to_uid\n")
+	err = stmt1.QueryRow(user, domain).Scan(&uid)
+        if err != nil {
+		fmt.Println(err)
+                os.Exit(111)
+        }
+
+	return uid
 }
