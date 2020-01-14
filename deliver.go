@@ -597,7 +597,8 @@ func env_defined (key string) bool {
 func autoresponder_enabled (user string, domain string) (bool) {
 	var count int
 	debug("Preparing statement in autoresponder_enabled\n")
-	stmt1, err := db.Prepare("SELECT CHAR_LENGTH(passwd.artext) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND arstart > 0 AND arend >= UNIX_TIMESTAMP()")
+//	stmt1, err := db.Prepare("SELECT CHAR_LENGTH(passwd.artext) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND arstart > 0 AND arend >= UNIX_TIMESTAMP()")
+	stmt1, err := db.Prepare("SELECT COUNT(*) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND arstart > 0 AND arend >= UNIX_TIMESTAMP()")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
