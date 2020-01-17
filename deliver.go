@@ -54,6 +54,9 @@ func main() {
 	// Destinations is an array where email should go
 	var destinations []string
 
+	// Record the delivery results
+	var deliveryresults []int
+
 	var message email
 	var err error
 	message.Text, err = read_from_stdin()
@@ -170,7 +173,6 @@ func main() {
 	}
 
 	for _, destination := range destinations {
-		var deliveryresults []int
 		debug("Starting delivery to "+destination+"\n")
 		switch destination_type(destination) {
 		case "maildir":
@@ -242,6 +244,19 @@ func main() {
 			if arsuccess == 0 {
 				record_autoresponse(email_to_uid(user,domain), sender)
 			}
+		}
+	}
+
+	if len(deliveryresults) == 1 {
+		// For a single delivery, we pass through the exit code
+		exitcode = deliveryresults[0]
+	} else {
+		// For multiple deliveries, if one fails, we exit 111 to get another chance
+		// Yes, that may cause duplicates, but that's better than losing mail
+		if array_sum(deliveryresults) > 0 {
+			exitcode = 111
+		} else {
+			exitcode = 0
 		}
 	}
 
@@ -686,4 +701,13 @@ func record_autoresponse (from int, to string) bool {
 //      }
 
 	return err == nil
+}
+
+func array_sum (input []int) int {
+        var sum int
+        for _, i := range input {
+                sum += i
+        }
+
+        return sum
 }
