@@ -170,6 +170,7 @@ func main() {
 	}
 
 	for _, destination := range destinations {
+		var deliveryresults []int
 		debug("Starting delivery to "+destination+"\n")
 		switch destination_type(destination) {
 		case "maildir":
@@ -177,13 +178,15 @@ func main() {
 //			if duplicate {
 			if dupfilter_enabled(user, domain) && is_duplicate(destination+"/INBOX", message.Sha1) {
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
+				deliveryresults = append(deliveryresults, 0)
 			} else {
 				writesuccess := write_to_maildir(message, destination+"/INBOX")
 				if writesuccess  {
 					fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
+					deliveryresults = append(deliveryresults, 0)
 				} else {
 					fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient)
-					exitcode = 1
+					deliveryresults = append(deliveryresults, 1)
 				}
 			}
 
@@ -193,8 +196,8 @@ func main() {
 				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
 			} else {
 				fmt.Println("ERROR: Could not forward to "+destination+" for "+message.Recipient)
-				exitcode = fwdsuccess
 			}
+			deliveryresults = append(deliveryresults, fwdsuccess)
 
 		case "pipe":
 			destination = strings.TrimPrefix(destination,`|`)
@@ -203,12 +206,13 @@ func main() {
 				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
 			} else {
 				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient)
-				exitcode = execsuccess
 			}
+			deliveryresults = append(deliveryresults, execsuccess)
 
 		default:
 			fmt.Println("Can not handle "+destination+" for "+message.Recipient)
-			exitcode = 111
+			deliveryresults = append(deliveryresults, 111)
+//			exitcode = 111
 		}
 	}
 
