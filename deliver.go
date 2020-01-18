@@ -513,6 +513,10 @@ func is_duplicate (directory string, hash string) (bool) {
 	if err != nil {
 		return false
 	}
+	// filelist can be empty, handle this
+	if filelist == nil {
+		return false
+	}
 
 	re, _ := regexp.Compile(`.`+hash)
 
