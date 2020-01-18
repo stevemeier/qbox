@@ -553,6 +553,10 @@ func destination_type (destination string) (string) {
 }
 
 func write_to_maildir (message email, directory string) (bool) {
+	// Make sure that destination actually is a directory
+	if !is_directory(directory) {
+		return false
+	}
 	// Example filename:
 	// 1576429450084839306.27056.bart.lordy.de.7a3e892ba01ce9899d101745da2757a81ac55779
 	filename := epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+sys_hostname()+`.`+message.Sha1
@@ -716,4 +720,12 @@ func array_sum (input []int) int {
         }
 
         return sum
+}
+
+func is_directory (path string) bool {
+    fileInfo, err := os.Stat(path)
+    if err != nil{
+      return false
+    }
+    return fileInfo.IsDir()
 }
