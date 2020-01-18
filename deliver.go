@@ -485,6 +485,7 @@ func directory_filelist_recursive (directory string) ([]string, error) {
 	re := regexp.MustCompile("permission denied")
 	var filelist []string
 
+	debug("Indexing "+directory+" in directory_filelist_recursive\n")
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		// We ignore "permission denied" errors"
 		if err != nil && !re.MatchString(err.Error()) {
@@ -509,6 +510,7 @@ func directory_filelist_recursive (directory string) ([]string, error) {
 
 func is_duplicate (directory string, hash string) (bool) {
 //	filelist, err := directory_filelist(directory)
+	debug("Getting file list for "+directory+" in is_duplicate\n")
 	filelist, err := directory_filelist_recursive(directory)
 	if err != nil {
 		return false
