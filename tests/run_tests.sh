@@ -52,3 +52,9 @@ for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=dupfi
 find /home/mail/testuser9 -type f | wc -l
 echo '*** END: DUPFILTER ***'
 echo
+
+# Test /dev/null
+echo '*** START: DEV/NULL ***'
+for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=devnull@localhost /opt/qbox/deliver < ${I}; echo $?; done
+echo '*** END: DEV/NULL ***'
+echo
