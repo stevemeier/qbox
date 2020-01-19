@@ -199,7 +199,7 @@ func main() {
 			if fwdsuccess == 0 {
 				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
 			} else {
-				fmt.Println("ERROR: Could not forward to "+destination+" for "+message.Recipient)
+				fmt.Println("ERROR: Could not forward to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
 			}
 			deliveryresults = append(deliveryresults, fwdsuccess)
 
@@ -209,7 +209,7 @@ func main() {
 			if execsuccess == 0 {
 				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
 			} else {
-				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient)
+				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
 			}
 			deliveryresults = append(deliveryresults, execsuccess)
 
