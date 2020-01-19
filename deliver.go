@@ -4,6 +4,7 @@ import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 import "bufio"
 import "bytes"
+import "errors"
 import "fmt"
 import "io"
 import "io/ioutil"
@@ -441,6 +442,10 @@ func antivir_enabled (user string, domain string) (bool) {
 
 func sysexec (command string, args []string, input []byte) ([]byte, int, error) {
 	var output bytes.Buffer
+
+	if !file_exists(command) {
+		return nil, -1, errors.New("command not found")
+	}
 
 	cmd := exec.Command(command, args...)
 	cmd.Stdin = bytes.NewBuffer(input)
