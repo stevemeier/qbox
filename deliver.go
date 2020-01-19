@@ -445,11 +445,11 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 	var output bytes.Buffer
 
 	if !file_exists(command) {
-		return nil, -1, errors.New("command not found")
+		return nil, 111, errors.New("command not found")
 	}
 
 	if !is_executable(command) {
-		return nil, -1, errors.New("command not executable")
+		return nil, 111, errors.New("command not executable")
 	}
 
 	cmd := exec.Command(command, args...)
