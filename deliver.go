@@ -15,6 +15,7 @@ import "path/filepath"
 import "regexp"
 import "strconv"
 import "strings"
+import "syscall"
 import "time"
 import "crypto/sha1"
 
@@ -447,6 +448,10 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 		return nil, -1, errors.New("command not found")
 	}
 
+	if !is_executable(command) {
+		return nil, -1, errors.New("command not executable")
+	}
+
 	cmd := exec.Command(command, args...)
 	cmd.Stdin = bytes.NewBuffer(input)
 	cmd.Stdout = &output
@@ -733,4 +738,20 @@ func is_directory (path string) bool {
       return false
     }
     return fileInfo.IsDir()
+}
+
+func is_executable (file string) bool {
+        stat, err := os.Stat(file)
+        if err != nil {
+                return false
+        }
+
+        // These calls return uint32 by default while
+        // os.Get?id returns int. So we have to change one
+        fileuid := int(stat.Sys().(*syscall.Stat_t).Uid)
+        filegid := int(stat.Sys().(*syscall.Stat_t).Gid)
+
+        if (os.Getuid() == fileuid) { return stat.Mode()&0100 != 0 }
+        if (os.Getgid() == filegid) { return stat.Mode()&0010 != 0 }
+        return stat.Mode()&0001 != 0
 }
