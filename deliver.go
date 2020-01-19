@@ -195,7 +195,7 @@ func main() {
 			}
 
 		case "forward":
-			_, fwdsuccess, _ := sysexec("/var/qmail/bin/qmail-inject", []string{"-fpostmaster@mail.lordy.de", destination}, []byte(message.Text))
+			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-fpostmaster@mail.lordy.de", destination}, []byte(message.Text))
 			if fwdsuccess == 0 {
 				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
 			} else {
@@ -205,7 +205,7 @@ func main() {
 
 		case "pipe":
 			destination = strings.TrimPrefix(destination,`|`)
-			_, execsuccess, _ := sysexec(destination, nil, []byte(message.Text))
+			_, execsuccess, err := sysexec(destination, nil, []byte(message.Text))
 			if execsuccess == 0 {
 				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
 			} else {
