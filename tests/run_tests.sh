@@ -46,6 +46,12 @@ for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=truef
 echo '*** END: PIPE TRUE+FALSE ***'
 echo
 
+# Forwarding
+echo '*** START: FORWARDING ***'
+for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=forward@localhost /opt/qbox/deliver < ${I}; echo $?; done
+echo '*** END: FORWARDING ***'
+echo
+
 # Test dupfilter
 echo '*** START: DUPFILTER ***'
 for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=dupfilter@localhost /opt/qbox/deliver < ${I}; echo $?; done
@@ -57,4 +63,10 @@ echo
 echo '*** START: DEV/NULL ***'
 for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=devnull@localhost /opt/qbox/deliver < ${I}; echo $?; done
 echo '*** END: DEV/NULL ***'
+echo
+
+# User gorup
+echo '*** START: GROUP ***'
+for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=testusers@localhost /opt/qbox/deliver < ${I}; echo $?; done
+echo '*** END: GROUP ***'
 echo
