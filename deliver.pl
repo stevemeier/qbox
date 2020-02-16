@@ -262,7 +262,7 @@ sub write_pipe {
   my ($lhomedir) = @_;
   $lhomedir =~ s/\|//x;
 
-  if (-x $homedir) {
+  if (-x $lhomedir) {
     my $lpid = open(my $PIPEFH, "|-", "$lhomedir") || warn "ERROR: Could not fork $lhomedir => $!\n";
     if ($lpid) {
       print $PIPEFH $message;
