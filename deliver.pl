@@ -65,6 +65,7 @@ my $sender = $ENV{'SENDER'};
 my $email = $ENV{'RECIPIENT'};
 $email =~ s/qbox-//x;                   # ausgliedern !
 chomp($email);
+$ENV{'ORIGINAL_RECIPIENT'} = $email;
 my ($user,$domain) = split(/\@/x, $email);
 chomp($user);
 chomp($domain);
