@@ -53,9 +53,18 @@ func main() {
 	timestamp := timestamp_or_epoch(string(input[2]))
 
 	// Determine client IP address from environment
+	// sslserver sets $SSLREMOTEIP
+	// tcpserver sets $TCPREMOTEIP or $TCP6REMOTEIP
+	// stunnel sets $REMOTE_HOST
 	var ipaddr string = ip_from_env("SSLREMOTEIP")
 	if len(ipaddr) == 0 {
 		ipaddr = ip_from_env("TCPREMOTEIP")
+	}
+	if len(ipaddr) == 0 {
+		ipaddr = ip_from_env("TCP6REMOTEIP")
+	}
+	if len(ipaddr) == 0 {
+		ipaddr = ip_from_env("REMOTE_HOST")
 	}
 	if len(ipaddr) == 0 {
 		ipaddr = "127.0.0.1"
