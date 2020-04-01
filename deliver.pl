@@ -65,6 +65,7 @@ my $sender = $ENV{'SENDER'};
 my $email = $ENV{'RECIPIENT'};
 $email =~ s/qbox-//x;                   # ausgliedern !
 chomp($email);
+$ENV{'ORIGINAL_RECIPIENT'} = $email;
 my ($user,$domain) = split(/\@/x, $email);
 chomp($user);
 chomp($domain);
@@ -262,7 +263,7 @@ sub write_pipe {
   my ($lhomedir) = @_;
   $lhomedir =~ s/\|//x;
 
-  if (-x $homedir) {
+  if (-x $lhomedir) {
     my $lpid = open(my $PIPEFH, "|-", "$lhomedir") || warn "ERROR: Could not fork $lhomedir => $!\n";
     if ($lpid) {
       print $PIPEFH $message;
