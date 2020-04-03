@@ -2,7 +2,6 @@ package main
 
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
-import "bufio"
 import "bytes"
 import "errors"
 import "fmt"
@@ -265,18 +264,23 @@ func main() {
 	os.Exit(exitcode)
 }
 
+//func read_from_stdin () (string, error) {
+//	scanner := bufio.NewScanner(os.Stdin)
+//	if scanner.Err() != nil {
+//		return "", scanner.Err()
+//	}
+//
+//	var message string
+//	for scanner.Scan() {
+//		message = message + scanner.Text() + "\n"
+//	}
+//
+//	return message, nil
+//}
 func read_from_stdin () (string, error) {
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Err() != nil {
-		return "", scanner.Err()
-	}
-
-	var message string
-	for scanner.Scan() {
-		message = message + scanner.Text() + "\n"
-	}
-
-	return message, nil
+        var message []byte
+	message, err := ioutil.ReadAll(os.Stdin)
+	return string(message), err
 }
 
 func sha1sum (message string) (string) {
