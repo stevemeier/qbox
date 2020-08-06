@@ -32,6 +32,11 @@ func main() {
 	}
 	user, domain := addrparts[0], addrparts[1]
 
+	_ = verify_recipient(smtprcptto, user, domain)
+	os.Exit(0)
+}
+
+func verify_recipient (smtprcptto string, user string, domain string) (bool) {
 	// Read config files
 	var dbserver string = "127.0.0.1"
 	if fileExists(configdir + "/dbserver") {
@@ -124,7 +129,8 @@ func main() {
 		// Recipient found
 		fmt.Fprintf(os.Stderr, "%d Found mapping for %s\n", os.Getppid(), smtprcptto)
 		fmt.Println()
-		os.Exit(0)
+//		os.Exit(0)
+		return true
 	}
 
 	// The user was not found, check if the domain is even in the system
@@ -148,7 +154,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%d Domain %s not found in table DOMAINS\n", os.Getppid(), domain)
 		fmt.Fprintf(os.Stdout, "E521 Domain unknown [%s]\n", domain)
 	}
-	os.Exit(0)
+//	os.Exit(0)
+	return false
 }
 
 func fileExists(filename string) bool {
