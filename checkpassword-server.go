@@ -220,7 +220,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Println("Failed to marshal response: "+err.Error())
 		}
-		fmt.Fprintf(w, string(bytes))
+		fmt.Fprint(w, string(bytes))
 
 		// Update `lastlogin` table
 		if !update_lastlogin(dbdata.uid, reqdata.Username, reqdata.Service) {
