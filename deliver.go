@@ -20,6 +20,7 @@ import "crypto/sha1"
 
 import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
+import jwemail "github.com/jordan-wright/email"
 
 const configdir = "/etc/qbox"
 const quarantine = "/var/qmail/quarantine"
@@ -229,19 +230,18 @@ func main() {
 	   message.Object.Header.Get("List-ID") == "" &&
 	   message.Object.Header.Get("X-Mailer") != "" {
 		if autoresponder_history(user, domain, sender, 604800) {
-			ar := "From: <"+message.Recipient+">\n"
-			ar += "To: <"+sender+">\n"
-			ar += "Message-ID: <"+epoch()+strconv.Itoa(os.Getpid())+"@"+sys_hostname()+">\n"
-			ar += "Date: "+rfc2822_date()+"\n"
+			ar := jwemail.NewEmail()
+			ar.From = "<"+message.Recipient+">"
+			ar.To[0] = "<"+sender+">"
 			if message.Object.Header.Get("Subject") == "" {
-				ar += "Subject: Autoresponder reply\n"
+				ar.Subject = "Autoresponder reply\n"
 			} else {
-				ar += "Subject: Auto: "+message.Object.Header.Get("Subject")
+				ar.Subject = "Auto: "+message.Object.Header.Get("Subject")
 			}
-			ar += "\n\n"
-			ar += autoresponder_text(user, domain)
+			ar.Text = []byte(autoresponder_text(user, domain))
 
-			_, arsuccess, _ := sysexec("/var/qmail/bin/qmail-inject", []string{"-f"+message.Recipient, sender}, []byte(ar))
+			arbytes, _ := ar.Bytes()
+			_, arsuccess, _ := sysexec("/var/qmail/bin/qmail-inject", []string{"-f"+message.Recipient, sender}, arbytes)
 			if arsuccess == 0 {
 				record_autoresponse(email_to_uid(user,domain), sender)
 			}
