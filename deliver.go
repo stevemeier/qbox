@@ -659,7 +659,7 @@ func autoresponder_enabled (user string, domain string) (bool) {
 func autoresponder_history (user string, domain string, sender string, duration int) bool {
 	var count int
 	debug("Preparing statement in autoresponder_history\n")
-	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = "+string(email_to_uid(user,domain))+" AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+string(duration) )
+	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = "+strconv.Itoa(email_to_uid(user,domain))+" AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+strconv.Itoa(duration)+")")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
