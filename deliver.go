@@ -3,6 +3,7 @@ package main
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 import "bytes"
+import "encoding/json"
 import "errors"
 import "fmt"
 import "io"
@@ -37,6 +38,14 @@ type email struct {
 	Object		*mail.Message
 }
 
+type report struct {
+	Sender		string
+	Recipient	string
+	Destinations	[]string
+	Results		[]int
+	Exitcode	int
+}
+
 func main() {
 	// Default exit code is 111
 	var exitcode int = 111
@@ -59,6 +68,7 @@ func main() {
 	// Record the delivery results
 	var deliveryresults []int
 
+	var dreport report
 	var message email
 	var err error
 	message.Text, err = read_from_stdin()
@@ -166,8 +176,8 @@ func main() {
 	if antivir_enabled(user, domain) {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
-		debug("Starting clamscan\n")
-		_, antivirsuccess, _ := sysexec("/usr/bin/clamscan", []string{tempfile}, nil)
+		debug("Starting clamdscan\n")
+		_, antivirsuccess, _ := sysexec("/usr/bin/clamdscan", []string{tempfile}, nil)
 		if antivirsuccess == 1 {
 			// Infected mails go to the quarantine
 			destinations = []string{quarantine}
@@ -261,6 +271,17 @@ func main() {
 		}
 	}
 
+	// Delivery Report
+	dreport.Sender = os.Getenv("SENDER")
+	dreport.Recipient = message.Recipient
+	dreport.Destinations = destinations
+	dreport.Results = deliveryresults
+	dreport.Exitcode = exitcode
+	if debug_enabled {
+		json, _ := json.Marshal(dreport)
+		fmt.Fprintf(os.Stderr, "%s", string(json))
+	}
+
 	os.Exit(exitcode)
 }
 
@@ -289,16 +310,16 @@ func sha1sum (message string) (string) {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func sha1sum_body (message string) (string) {
-	// Ignore Headers so that duplicate detection can actually work
-        re, _ := regexp.Compile(`\n\n`)
-        fsi := re.FindStringIndex(message)
-        body := message[fsi[1]:]
-
-        hash := sha1.New()
-        _, _ = io.WriteString(hash, body)
-        return fmt.Sprintf("%x", hash.Sum(nil))
-}
+//func sha1sum_body (message string) (string) {
+//	// Ignore Headers so that duplicate detection can actually work
+//        re, _ := regexp.Compile(`\n\n`)
+//        fsi := re.FindStringIndex(message)
+//        body := message[fsi[1]:]
+//
+//        hash := sha1.New()
+//        _, _ = io.WriteString(hash, body)
+//        return fmt.Sprintf("%x", hash.Sum(nil))
+//}
 
 func epoch () (string) {
 	now := time.Now()
@@ -475,25 +496,25 @@ func rfc2822_date () (string) {
 	return time.Format(layout)
 }
 
-func directory_filelist (directory string) ([]string, error) {
-        var result []string
-
-        files, err := ioutil.ReadDir(directory)
-        if err != nil {
-                return result, err
-        }
-
-        for _, file := range files {
-                filestat, err := os.Stat(file.Name())
-                if err == nil {
-                        if filestat.Mode().IsRegular() {
-                                result = append(result, file.Name())
-                        }
-                }
-        }
-
-        return result, nil
-}
+//func directory_filelist (directory string) ([]string, error) {
+//        var result []string
+//
+//        files, err := ioutil.ReadDir(directory)
+//        if err != nil {
+//                return result, err
+//        }
+//
+//        for _, file := range files {
+//                filestat, err := os.Stat(file.Name())
+//                if err == nil {
+//                        if filestat.Mode().IsRegular() {
+//                                result = append(result, file.Name())
+//                        }
+//                }
+//        }
+//
+//        return result, nil
+//}
 
 func directory_filelist_recursive (directory string) ([]string, error) {
 	re := regexp.MustCompile("permission denied")
