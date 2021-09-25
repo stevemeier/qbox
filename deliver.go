@@ -415,7 +415,7 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 	debug("Preparing statement in feature_enabled\n")
 	stmt1, err := db.Prepare("SELECT COUNT(passwd."+feature+") FROM passwd "+
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
-				 "WHERE user = ? AND domain = ? AND antispam > 0")
+				 "WHERE user = ? AND domain = ? AND "+feature+" > 0")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
