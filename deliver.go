@@ -131,7 +131,7 @@ func main() {
         if err == nil {
                 err = db.Ping()
                 if err != nil {
-			fmt.Println("ERROR: db.Ping failed!")
+			fmt.Println("ERROR: MySQL db.Ping failed! ["+err.Error()+"]")
                         os.Exit(exitcode)
                 }
         } else {
@@ -498,10 +498,11 @@ func is_duplicate (directory string, hash string) (bool) {
 		return false
 	}
 
-	re, _ := regexp.Compile(`.`+hash)
+//	re, _ := regexp.Compile(`.`+hash)
 
 	for _, file := range filelist {
-		if re.MatchString(file) {
+//		if re.MatchString(file) {
+		if strings.HasSuffix(file, hash) {
 			return true
 		}
 	}
