@@ -77,3 +77,22 @@ echo '*** START: GROUP ***'
 for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=testusers@localhost /opt/qbox/deliver < ${I}; echo $?; done
 echo '*** END: GROUP ***'
 echo
+
+ONESHOT=$(find /opt/qbox/tests/emails -name '*.eml' -type f | head -n 1)
+
+# Nonexistent domain
+echo '*** NON-EXISTENT DOMAIN ***'
+RECIPIENT=unknown@localhost /opt/qbox/deliver < ${ONESHOT}
+echo $?
+
+# Nonexistent user
+echo '*** NON-EXISTENT USER ***'
+RECIPIENT=testusers@unknown.local /opt/qbox/deliver < ${ONESHOT}
+echo $?
+
+# Test database failure
+echo '*** DATABASE STOPPED ***'
+systemctl stop mariadb
+RECIPIENT=testusers@localhost /opt/qbox/deliver < ${ONESHOT}
+echo $?
+systemctl start mariadb
