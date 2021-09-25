@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Clean up from previous run
+find /home/mail -type f | xargs rm
+
+# Count test emails
+NUMTESTS=$(find /opt/qbox/tests/emails -name '*.eml' -type f | wc -l)
+echo "Running with ${NUMTESTS} inputs"
+
 # No Filter Tests
 echo '*** START: NO FILTER ***'
 for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=nofilter@localhost /opt/qbox/deliver < ${I}; done
