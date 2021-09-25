@@ -71,6 +71,8 @@ func main() {
 	var dreport report
 	var message email
 	var err error
+
+	// Read email message from STDIN
 	message.Text, err = read_from_stdin()
 	if err != nil {
 		os.Exit(1)
@@ -93,6 +95,7 @@ func main() {
         }
         user, domain := addrparts[0], addrparts[1]
 
+	// Read the `sender` from the environment
 	var sender string
 	if env_defined("SENDER") {
 		sender = os.Getenv("SENDER")
@@ -161,11 +164,10 @@ func main() {
 		os.Exit(100)
 	}
 
-	if antispam_enabled(user, domain) && spamd_available() {
+	if feature_enabled(user, domain, "antispam") && spamd_available() {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
 		debug("Starting spamc\n")
-//		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", nil, []byte(message.Text))
 		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Text))
 		// Spamc will exit 0 on ham, 1 on spam
 		if antispamsuccess < 2 {
@@ -173,7 +175,7 @@ func main() {
 		}
 	}
 
-	if antivir_enabled(user, domain) {
+	if feature_enabled(user, domain, "antivir") {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
 		debug("Starting clamdscan\n")
@@ -188,9 +190,7 @@ func main() {
 		debug("Starting delivery to "+destination+"\n")
 		switch destination_type(destination) {
 		case "maildir":
-//			duplicate := is_duplicate(destination+"/INBOX", message.Sha1)
-//			if duplicate {
-			if dupfilter_enabled(user, domain) && is_duplicate(destination+"/INBOX", message.Sha1) {
+			if feature_enabled(user, domain, "dupfilter") && is_duplicate(destination+"/INBOX", message.Sha1) {
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 				deliveryresults = append(deliveryresults, 0)
 			} else {
@@ -226,7 +226,6 @@ func main() {
 		default:
 			fmt.Println("Can not handle "+destination+" for "+message.Recipient)
 			deliveryresults = append(deliveryresults, 111)
-//			exitcode = 111
 		}
 	}
 
@@ -234,7 +233,7 @@ func main() {
 	// Mailing lists are ignored (if List-ID header is present)
 	// If there is no X-Mailer Header, it's likely automated, so no response either
 	noreply := regexp.MustCompile(`^noreply`)
-	if autoresponder_enabled(user, domain) &&
+	if feature_enabled(user, domain, "autoresponder") &&
 	   !noreply.MatchString(sender) &&
 	   sender != "" &&
 	   message.Object.Header.Get("List-ID") == "" &&
@@ -285,19 +284,6 @@ func main() {
 	os.Exit(exitcode)
 }
 
-//func read_from_stdin () (string, error) {
-//	scanner := bufio.NewScanner(os.Stdin)
-//	if scanner.Err() != nil {
-//		return "", scanner.Err()
-//	}
-//
-//	var message string
-//	for scanner.Scan() {
-//		message = message + scanner.Text() + "\n"
-//	}
-//
-//	return message, nil
-//}
 func read_from_stdin () (string, error) {
         var message []byte
 	message, err := ioutil.ReadAll(os.Stdin)
@@ -309,17 +295,6 @@ func sha1sum (message string) (string) {
 	_, _ = io.WriteString(hash, message)
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
-
-//func sha1sum_body (message string) (string) {
-//	// Ignore Headers so that duplicate detection can actually work
-//        re, _ := regexp.Compile(`\n\n`)
-//        fsi := re.FindStringIndex(message)
-//        body := message[fsi[1]:]
-//
-//        hash := sha1.New()
-//        _, _ = io.WriteString(hash, body)
-//        return fmt.Sprintf("%x", hash.Sum(nil))
-//}
 
 func epoch () (string) {
 	now := time.Now()
@@ -404,7 +379,9 @@ func get_destinations (user string, domain string) ([]string) {
 	var homedir string
 
 	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir FROM passwd "+
+	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
+				 "WHERE user = ? AND domain = ?")
         if err != nil {
 		os.Exit(111)
         }
@@ -428,35 +405,22 @@ func get_destinations (user string, domain string) ([]string) {
 	return destinations
 }
 
-func antispam_enabled (user string, domain string) (bool) {
+func feature_enabled (user string, domain string, feature string) (bool) {
+	// Currently supported:
+	// `antispam`
+	// `antivir`
+	// `autoresponder`
+	// `dupfilter`
 	var count int
-	debug("Preparing statement in antispam_enabled\n")
-//	stmt1, err := db.Prepare("SELECT DISTINCT passwd.antispam FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antispam > 0")
-	stmt1, err := db.Prepare("SELECT COUNT(passwd.antispam) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antispam > 0")
+	debug("Preparing statement in feature_enabled\n")
+	stmt1, err := db.Prepare("SELECT COUNT(passwd."+feature+") FROM passwd "+
+	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
+				 "WHERE user = ? AND domain = ? AND antispam > 0")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
         }
-	debug("Running query in antispam_enabled\n")
-	err = stmt1.QueryRow(user, domain).Scan(&count)
-        if err != nil {
-		fmt.Println(err)
-                os.Exit(111)
-        }
-
-	return count > 0
-}
-
-func antivir_enabled (user string, domain string) (bool) {
-	var count int
-	debug("Preparing statement in antivir_enabled\n")
-//	stmt1, err := db.Prepare("SELECT DISTINCT passwd.antivir FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antivir > 0")
-	stmt1, err := db.Prepare("SELECT COUNT(passwd.antivir) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND antivir > 0")
-        if err != nil {
-		fmt.Println(err)
-		os.Exit(111)
-        }
-	debug("Running query in antivir_enabled\n")
+	debug("Running query in feature_enabled\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
 		fmt.Println(err)
@@ -490,30 +454,10 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 	return output.Bytes(), exitcode, err
 }
 
-func rfc2822_date () (string) {
-	layout := "Mon, 02 Jan 2006 15:04:05 UTC"
-	time := time.Now().UTC()
-	return time.Format(layout)
-}
-
-//func directory_filelist (directory string) ([]string, error) {
-//        var result []string
-//
-//        files, err := ioutil.ReadDir(directory)
-//        if err != nil {
-//                return result, err
-//        }
-//
-//        for _, file := range files {
-//                filestat, err := os.Stat(file.Name())
-//                if err == nil {
-//                        if filestat.Mode().IsRegular() {
-//                                result = append(result, file.Name())
-//                        }
-//                }
-//        }
-//
-//        return result, nil
+//func rfc2822_date () (string) {
+//	layout := "Mon, 02 Jan 2006 15:04:05 UTC"
+//	time := time.Now().UTC()
+//	return time.Format(layout)
 //}
 
 func directory_filelist_recursive (directory string) ([]string, error) {
@@ -544,7 +488,6 @@ func directory_filelist_recursive (directory string) ([]string, error) {
 }
 
 func is_duplicate (directory string, hash string) (bool) {
-//	filelist, err := directory_filelist(directory)
 	debug("Getting file list for "+directory+" in is_duplicate\n")
 	filelist, err := directory_filelist_recursive(directory)
 	if err != nil {
@@ -633,48 +576,11 @@ func spamd_available () (bool) {
 	return spamdstatus == 0
 }
 
-func dupfilter_enabled (user string, domain string) (bool) {
-	var count int
-	debug("Preparing statement in dupfilter_enabled\n")
-	stmt1, err := db.Prepare("SELECT COUNT(passwd.dupfilter) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND dupfilter > 0")
-        if err != nil {
-		fmt.Println(err)
-		os.Exit(111)
-        }
-	debug("Running query in dupfilter_enabled\n")
-	err = stmt1.QueryRow(user, domain).Scan(&count)
-        if err != nil {
-		fmt.Println(err)
-                os.Exit(111)
-        }
-
-	return count > 0
-}
-
 func env_defined (key string) bool {
   value, exists := os.LookupEnv(key)
   _ = value
 
   return exists
-}
-
-func autoresponder_enabled (user string, domain string) (bool) {
-	var count int
-	debug("Preparing statement in autoresponder_enabled\n")
-//	stmt1, err := db.Prepare("SELECT CHAR_LENGTH(passwd.artext) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND arstart > 0 AND arend >= UNIX_TIMESTAMP()")
-	stmt1, err := db.Prepare("SELECT COUNT(*) FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ? AND arstart > 0 AND arend >= UNIX_TIMESTAMP()")
-        if err != nil {
-		fmt.Println(err)
-		os.Exit(111)
-        }
-	debug("Running query in autoresponder_enabled\n")
-	err = stmt1.QueryRow(user, domain).Scan(&count)
-        if err != nil {
-		fmt.Println(err)
-                os.Exit(111)
-        }
-
-	return count > 0
 }
 
 func autoresponder_history (user string, domain string, sender string, duration int) bool {
