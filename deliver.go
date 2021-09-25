@@ -412,7 +412,7 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 	// `autoresponder`
 	// `dupfilter`
 	var count int
-	debug("Preparing statement in feature_enabled\n")
+	debug("Preparing statement in feature_enabled [+"feature+"]\n")
 	stmt1, err := db.Prepare("SELECT COUNT(passwd."+feature+") FROM passwd "+
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ? AND "+feature+" > 0")
@@ -420,7 +420,7 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 		fmt.Println(err)
 		os.Exit(111)
         }
-	debug("Running query in feature_enabled\n")
+	debug("Running query in feature_enabled [+"feature+"]\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
 		fmt.Println(err)
@@ -531,6 +531,10 @@ func destination_type (destination string) (string) {
 }
 
 func write_to_maildir (message email, directory string) (bool) {
+	// If homedir is set to /dev/null, silently discard the message
+	if strings.HasPrefix(directory, "/dev/null") {
+		return true
+	}
 	// Make sure that destination actually is a directory
 	if !is_directory(directory) {
 		return false
