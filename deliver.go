@@ -219,7 +219,7 @@ func main() {
 			if execsuccess == 0 {
 				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
 			} else {
-				fmt.Println("ERROR: Could not pipe to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
+				fmt.Println("ERROR: Pipe failed to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
 			}
 			deliveryresults = append(deliveryresults, execsuccess)
 
