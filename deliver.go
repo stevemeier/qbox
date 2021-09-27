@@ -35,7 +35,7 @@ type email struct {
 	Recipient	string
 	Sha1		string
 	Text		string
-	Object		*mail.Message
+	Object		*mail.Message	// currently only used for Autoresponder
 }
 
 type report struct {
@@ -582,10 +582,8 @@ func spamd_available () (bool) {
 }
 
 func env_defined (key string) bool {
-  value, exists := os.LookupEnv(key)
-  _ = value
-
-  return exists
+	_, exists := os.LookupEnv(key)
+	return exists
 }
 
 func autoresponder_history (user string, domain string, sender string, duration int) bool {
@@ -669,11 +667,9 @@ func array_sum (input []int) int {
 }
 
 func is_directory (path string) bool {
-    fileInfo, err := os.Stat(path)
-    if err != nil{
-      return false
-    }
-    return fileInfo.IsDir()
+	fileInfo, err := os.Stat(path)
+	if err != nil { return false }
+	return fileInfo.IsDir()
 }
 
 func is_executable (file string) bool {
@@ -690,4 +686,9 @@ func is_executable (file string) bool {
         if (os.Getuid() == fileuid) { return stat.Mode()&0100 != 0 }
         if (os.Getgid() == filegid) { return stat.Mode()&0010 != 0 }
         return stat.Mode()&0001 != 0
+}
+
+func bool_yesno (input bool) (string) {
+	if input { return "Yes" }
+	return "No"
 }
