@@ -104,26 +104,17 @@ func main() {
         // Read config files
         var dbserver string = "127.0.0.1"
         if file_exists(configdir + "/dbserver") {
-                buf, err := ioutil.ReadFile(configdir + "/dbserver")
-                if err == nil {
-                        dbserver = string(buf)
-                }
+		dbserver = file_content(configdir + "/dbserver")
         }
 
         var dbuser string = "qbox"
         if file_exists(configdir + "/dbuser") {
-                buf, err := ioutil.ReadFile(configdir + "/dbuser")
-                if err == nil {
-                        dbuser = string(buf)
-                }
+		dbuser = file_content(configdir + "/dbuser")
         }
 
         var dbpass string
         if file_exists(configdir + "/dbpass") {
-                buf, err := ioutil.ReadFile(configdir + "/dbpass")
-                if err == nil {
-                        dbpass = string(buf)
-                }
+		dbpass = file_content(configdir + "/dbpass")
         }
 
         // Initialize DB
@@ -691,4 +682,10 @@ func is_executable (file string) bool {
 func bool_yesno (input bool) (string) {
 	if input { return "Yes" }
 	return "No"
+}
+
+func file_content (filename string) (string) {
+	buf, err := ioutil.ReadFile(filename)
+	if err == nil { return string(buf) }
+	return ""
 }
