@@ -34,7 +34,7 @@ type email struct {
 	Length		int
 	Recipient	string
 	Sha1		string
-	Text		string
+	Raw		string
 	Object		*mail.Message	// currently only used for Autoresponder
 }
 
@@ -73,15 +73,15 @@ func main() {
 	var err error
 
 	// Read email message from STDIN
-	message.Text, err = read_from_stdin()
+	message.Raw, err = read_from_stdin()
 	if err != nil {
 		os.Exit(1)
 	}
 
-	message.Length = len(message.Text)
+	message.Length = len(message.Raw)
 	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), "qbox-")
-	message.Sha1 = sha1sum(message.Text)
-	message.Object, _ = mail.ReadMessage(strings.NewReader(message.Text))
+	message.Sha1 = sha1sum(message.Raw)
+	message.Object, _ = mail.ReadMessage(strings.NewReader(message.Raw))
 
 	if (len(message.Recipient) == 0) {
 		fmt.Println("RECIPIENT not set!")
@@ -159,10 +159,10 @@ func main() {
 		tempfile := write_to_tempfile(message)
 		defer os.Remove(tempfile)
 		debug("Starting spamc\n")
-		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Text))
+		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Raw))
 		// Spamc will exit 0 on ham, 1 on spam
 		if antispamsuccess < 2 {
-			message.Text = string(antispamresult)
+			message.Raw = string(antispamresult)
 		}
 	}
 
@@ -196,7 +196,7 @@ func main() {
 			}
 
 		case "forward":
-			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-fpostmaster@mail.lordy.de", destination}, []byte(message.Text))
+			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-fpostmaster@mail.lordy.de", destination}, []byte(message.Raw))
 			if fwdsuccess == 0 {
 				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
 			} else {
@@ -206,7 +206,7 @@ func main() {
 
 		case "pipe":
 			destination = strings.TrimPrefix(destination,`|`)
-			_, execsuccess, err := sysexec(destination, nil, []byte(message.Text))
+			_, execsuccess, err := sysexec(destination, nil, []byte(message.Raw))
 			if execsuccess == 0 {
 				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
 			} else {
@@ -307,7 +307,7 @@ func write_to_file (message email, filename string) (bool) {
 		return false
 	}
 
-	err := ioutil.WriteFile(filename, []byte(message.Text), 0600)
+	err := ioutil.WriteFile(filename, []byte(message.Raw), 0600)
 	return err == nil
 }
 
@@ -317,7 +317,7 @@ func write_to_tempfile (message email) (string) {
 		return ""
 	}
 
-	_, err = tmpfile.Write([]byte(message.Text))
+	_, err = tmpfile.Write([]byte(message.Raw))
 	if err != nil {
 		return ""
 	}
