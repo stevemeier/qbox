@@ -2,12 +2,14 @@ package main
 
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
+import "context"
 import "bytes"
 import "encoding/json"
 import "errors"
 import "fmt"
 import "io"
 import "io/ioutil"
+import "net"
 import "os"
 import "os/exec"
 import "path/filepath"
@@ -21,9 +23,10 @@ import "crypto/sha1"
 import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 import jwemail "github.com/jordan-wright/email"
+import "github.com/baruwa-enterprise/clamd"
+import "github.com/teamwork/spamc"
 
 const configdir = "/etc/qbox"
-const quarantine = "/var/qmail/quarantine"
 var debug_enabled bool = false
 
 // Make DB available globally, not just in main
@@ -35,6 +38,7 @@ type email struct {
 	Sha1		string
 	Raw		string		// Message as read from STDIN (unaltered)
 	Object		*jwemail.Email	// currently only used for Autoresponder
+	UseObject	bool		// Use object instead of `Raw`, if true
 }
 
 type report struct {
@@ -154,25 +158,40 @@ func main() {
 		os.Exit(100)
 	}
 
-	if feature_enabled(user, domain, "antispam") && spamd_available() {
-		tempfile := write_to_tempfile(message)
-		defer os.Remove(tempfile)
-		debug("Starting spamc\n")
-		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Raw))
-		// Spamc will exit 0 on ham, 1 on spam
-		if antispamsuccess < 2 {
-			message.Raw = string(antispamresult)
+//	if feature_enabled(user, domain, "antispam") && spamd_available() {
+	if feature_enabled(user, domain, "antispam") {
+//		tempfile := write_to_tempfile(message)
+//		defer os.Remove(tempfile)
+//		debug("Starting spamc\n")
+//		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Raw))
+//		// Spamc will exit 0 on ham, 1 on spam
+//		if antispamsuccess < 2 {
+//			message.Raw = string(antispamresult)
+//		}
+		debug("Running SPAM scan\n")
+		spamresult, spamerr := spamd_scan(&message.Raw)
+		if spamerr == nil {
+			message.Object.Headers.Set("X-Spam-Flag", bool_yesno(spamresult.IsSpam))
+			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, int(spamresult.Score)))
+			message.UseObject = true
 		}
 	}
 
 	if feature_enabled(user, domain, "antivir") {
-		tempfile := write_to_tempfile(message)
-		defer os.Remove(tempfile)
-		debug("Starting clamdscan\n")
-		_, antivirsuccess, _ := sysexec("/usr/bin/clamdscan", []string{tempfile}, nil)
-		if antivirsuccess == 1 {
-			// Infected mails go to the quarantine
-			destinations = []string{quarantine}
+//		tempfile := write_to_tempfile(message)
+//		defer os.Remove(tempfile)
+//		debug("Starting clamdscan\n")
+//		_, antivirsuccess, _ := sysexec("/usr/bin/clamdscan", []string{tempfile}, nil)
+//		if antivirsuccess == 1 {
+//			// Infected mails go to the quarantine
+//			destinations = []string{quarantine}
+//		}
+		debug("Running AV scan\n")
+		avresult, averr := clamd_scan(&message.Raw)
+		if averr == nil && avresult.Status != "OK" {
+			// Virus was found, strip attachments
+			message.Object.Attachments = nil
+			message.UseObject = true
 		}
 	}
 
@@ -306,23 +325,33 @@ func write_to_file (message email, filename string) (bool) {
 		return false
 	}
 
-	err := ioutil.WriteFile(filename, []byte(message.Raw), 0600)
-	return err == nil
+	var werr error
+	if message.UseObject {
+		objbytes, byteerr := message.Object.Bytes()
+		if byteerr == nil {
+			werr = ioutil.WriteFile(filename, objbytes, 0600)
+		} else {
+			werr = byteerr
+		}
+	} else {
+		werr = ioutil.WriteFile(filename, []byte(message.Raw), 0600)
+	}
+	return werr == nil
 }
 
-func write_to_tempfile (message email) (string) {
-	tmpfile, err := ioutil.TempFile("", "qbox")
-	if err != nil {
-		return ""
-	}
-
-	_, err = tmpfile.Write([]byte(message.Raw))
-	if err != nil {
-		return ""
-	}
-
-	return tmpfile.Name()
-}
+//func write_to_tempfile (message email) (string) {
+//	tmpfile, err := ioutil.TempFile("", "qbox")
+//	if err != nil {
+//		return ""
+//	}
+//
+//	_, err = tmpfile.Write([]byte(message.Raw))
+//	if err != nil {
+//		return ""
+//	}
+//
+//	return tmpfile.Name()
+//}
 
 func file_exists(filename string) bool {
         info, err := os.Stat(filename)
@@ -566,10 +595,10 @@ func debug (message string) (bool) {
 	return false
 }
 
-func spamd_available () (bool) {
-	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
-	return spamdstatus == 0
-}
+//func spamd_available () (bool) {
+//	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
+//	return spamdstatus == 0
+//}
 
 func env_defined (key string) bool {
 	_, exists := os.LookupEnv(key)
@@ -687,4 +716,30 @@ func file_content (filename string) (string) {
 	buf, err := ioutil.ReadFile(filename)
 	if err == nil { return string(buf) }
 	return ""
+}
+
+func spamd_scan (input *string) (*spamc.ResponseCheck, error) {
+	var spamd_url string = "127.0.0.1:783"
+	// read config file
+	if file_exists(configdir+"/spamd") {
+		spamd_url = file_content(configdir+"/spamd")
+	}
+	// initialize client
+	spamc := spamc.New(spamd_url, &net.Dialer{ Timeout: 2 * time.Second })
+	// do scan
+	check, err := spamc.Check(context.Background(), strings.NewReader(*input), nil)
+	return check, err
+}
+
+func clamd_scan (input *string) (*clamd.Response, error) {
+	var clamd_url string = "127.0.0.1:3310"
+	// read config file
+	if file_exists(configdir+"/clamd") {
+		clamd_url = file_content(configdir+"/clamd")
+	}
+	// initialize client
+	clamc, _ := clamd.NewClient("tcp", clamd_url)
+	// do scan
+	avresult, err := clamc.ScanReader(context.Background(), strings.NewReader(*input))
+	return avresult[0], err
 }
