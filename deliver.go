@@ -46,6 +46,7 @@ type report struct {
 	Recipient	string
 	Destinations	[]string
 	Results		[]int
+	Features	[]string
 	Exitcode	int
 }
 
@@ -168,6 +169,7 @@ func main() {
 //		if antispamsuccess < 2 {
 //			message.Raw = string(antispamresult)
 //		}
+		dreport.Features = append(dreport.Features, "antispam")
 		debug("Running SPAM scan\n")
 		spamresult, spamerr := spamd_scan(&message.Raw)
 		if spamerr == nil {
@@ -186,6 +188,7 @@ func main() {
 //			// Infected mails go to the quarantine
 //			destinations = []string{quarantine}
 //		}
+		dreport.Features = append(dreport.Features, "antivir")
 		debug("Running AV scan\n")
 		avresult, averr := clamd_scan(&message.Raw)
 		if averr == nil && avresult.Status != "OK" {
