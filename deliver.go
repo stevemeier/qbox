@@ -8,7 +8,6 @@ import "errors"
 import "fmt"
 import "io"
 import "io/ioutil"
-import "net/mail"
 import "os"
 import "os/exec"
 import "path/filepath"
@@ -34,8 +33,8 @@ type email struct {
 	Length		int
 	Recipient	string
 	Sha1		string
-	Raw		string
-	Object		*mail.Message	// currently only used for Autoresponder
+	Raw		string		// Message as read from STDIN (unaltered)
+	Object		*jwemail.Email	// currently only used for Autoresponder
 }
 
 type report struct {
@@ -81,7 +80,7 @@ func main() {
 	message.Length = len(message.Raw)
 	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), "qbox-")
 	message.Sha1 = sha1sum(message.Raw)
-	message.Object, _ = mail.ReadMessage(strings.NewReader(message.Raw))
+	message.Object, _ = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
 
 	if (len(message.Recipient) == 0) {
 		fmt.Println("RECIPIENT not set!")
@@ -227,16 +226,16 @@ func main() {
 	if feature_enabled(user, domain, "autoresponder") &&
 	   !noreply.MatchString(sender) &&
 	   sender != "" &&
-	   message.Object.Header.Get("List-ID") == "" &&
-	   message.Object.Header.Get("X-Mailer") != "" {
+	   message.Object.Headers.Get("List-ID") == "" &&
+	   message.Object.Headers.Get("X-Mailer") != "" {
 		if autoresponder_history(user, domain, sender, 604800) {
 			ar := jwemail.NewEmail()
 			ar.From = "<"+message.Recipient+">"
 			ar.To[0] = "<"+sender+">"
-			if message.Object.Header.Get("Subject") == "" {
+			if message.Object.Headers.Get("Subject") == "" {
 				ar.Subject = "Autoresponder reply\n"
 			} else {
-				ar.Subject = "Auto: "+message.Object.Header.Get("Subject")
+				ar.Subject = "Auto: "+message.Object.Headers.Get("Subject")
 			}
 			ar.Text = []byte(autoresponder_text(user, domain))
 
