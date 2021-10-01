@@ -44,6 +44,8 @@ type email struct {
 type report struct {
 	Sender		string
 	Recipient	string
+	Size		int
+	ProcessingTime	float64
 	Destinations	[]string
 	Results		[]int
 	Features	[]string
@@ -51,6 +53,9 @@ type report struct {
 }
 
 func main() {
+	// Start a timer
+	start := time.Now()
+
 	// Default exit code is 111
 	var exitcode int = 111
 
@@ -191,10 +196,13 @@ func main() {
 		dreport.Features = append(dreport.Features, "antivir")
 		debug("Running AV scan\n")
 		avresult, averr := clamd_scan(&message.Raw)
-		if averr == nil && avresult.Status != "OK" {
-			// Virus was found, strip attachments
-			message.Object.Attachments = nil
+		if averr == nil {
+			message.Object.Headers.Set("X-Virus-Scanned", "ClamAV")
 			message.UseObject = true
+			if avresult.Status != "OK" {
+				// Virus was found, strip attachments
+				message.Object.Attachments = nil
+			}
 		}
 	}
 
@@ -203,15 +211,16 @@ func main() {
 		switch destination_type(destination) {
 		case "maildir":
 			if feature_enabled(user, domain, "dupfilter") && is_duplicate(destination+"/INBOX", message.Sha1) {
+				dreport.Features = append(dreport.Features, "dupfilter")
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 				deliveryresults = append(deliveryresults, 0)
 			} else {
-				writesuccess := write_to_maildir(message, destination+"/INBOX")
+				writesuccess, err := write_to_maildir(message, destination+"/INBOX")
 				if writesuccess  {
 					fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
 					deliveryresults = append(deliveryresults, 0)
 				} else {
-					fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient)
+					fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
 					deliveryresults = append(deliveryresults, 1)
 				}
 			}
@@ -285,9 +294,11 @@ func main() {
 	// Delivery Report
 	dreport.Sender = os.Getenv("SENDER")
 	dreport.Recipient = message.Recipient
+	dreport.Size = message.Length
 	dreport.Destinations = destinations
 	dreport.Results = deliveryresults
 	dreport.Exitcode = exitcode
+	dreport.ProcessingTime = time.Duration(time.Since(start)).Seconds()
 	if debug_enabled {
 		json, _ := json.Marshal(dreport)
 		fmt.Fprintf(os.Stderr, "%s", string(json))
@@ -314,20 +325,24 @@ func epoch () (string) {
 	return strconv.FormatInt(now.UnixNano(), 10)
 }
 
-func write_to_file (message email, filename string) (bool) {
+func write_to_file (message email, filename string) (bool, error) {
+	debug("START write_to_file\n")
 	unix.Umask(077)
 
 	// Never overwrite existing files
+	debug("Checking for existing file\n")
 	if file_exists(filename) {
-		return false
+		return false, errors.New("File already exists")
 	}
 
 	// Only accept absolute paths (starting with slash)
+	debug("Checking for absolute path\n")
 	re := regexp.MustCompile(`^/`)
 	if !re.MatchString(filename) {
-		return false
+		return false, errors.New("Not an absolute path")
 	}
 
+	debug("Writing to "+filename+"\n")
 	var werr error
 	if message.UseObject {
 		objbytes, byteerr := message.Object.Bytes()
@@ -339,7 +354,8 @@ func write_to_file (message email, filename string) (bool) {
 	} else {
 		werr = ioutil.WriteFile(filename, []byte(message.Raw), 0600)
 	}
-	return werr == nil
+
+	return werr == nil, werr
 }
 
 //func write_to_tempfile (message email) (string) {
@@ -356,13 +372,16 @@ func write_to_file (message email, filename string) (bool) {
 //	return tmpfile.Name()
 //}
 
-func file_exists(filename string) bool {
-        info, err := os.Stat(filename)
-        if os.IsNotExist(err) {
-                return false
-        }
+func file_exists (filename string) (bool) {
+	debug("START file_exists: "+filename+"\n")
+//        info, err := os.Stat(filename)
+        _, err := os.Stat(filename)
+	return !os.IsNotExist(err)
+//        if os.IsNotExist(err) {
+//                return false, nil
+//        }
 
-        return !info.IsDir()
+//        return !info.IsDir(), nil
 }
 
 func rewrite_domain (domain string) string {
@@ -439,14 +458,18 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ? AND "+feature+" > 0")
         if err != nil {
-		fmt.Println(err)
-		os.Exit(111)
+//		fmt.Println(err)
+//		os.Exit(111)
+		debug(err.Error())
+		return false
         }
 	debug("Running query in feature_enabled ["+feature+"]\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
-		fmt.Println(err)
-                os.Exit(111)
+//		fmt.Println(err)
+//              os.Exit(111)
+		debug(err.Error())
+		return false
         }
 
 	return count > 0
@@ -484,12 +507,13 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 
 func directory_filelist_recursive (directory string) ([]string, error) {
 	re := regexp.MustCompile("permission denied")
-	var filelist []string
+	var filelist []string = []string{}
 
 	debug("Indexing "+directory+" in directory_filelist_recursive\n")
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		// We ignore "permission denied" errors"
 		if err != nil && !re.MatchString(err.Error()) {
+			debug(err.Error())
 			return err
 		}
 
@@ -499,13 +523,16 @@ func directory_filelist_recursive (directory string) ([]string, error) {
 		}
 		return nil
 	})
+	debug("Indexing complete\n")
 
 	// if Walk ran into an error we return an empty list and pass the error up
 	if err != nil {
-		return nil, err
+		debug("directory_filelist_recursive failed\n")
+		return []string{}, err
 	}
 
 	// On success we return a filelist and a nil error
+	debug("directory_filelist_recursive OK\n")
 	return filelist, nil
 }
 
@@ -515,13 +542,8 @@ func is_duplicate (directory string, hash string) (bool) {
 	if err != nil {
 		return false
 	}
+
 	// filelist can be empty, handle this
-	if filelist == nil {
-		return false
-	}
-
-//	re, _ := regexp.Compile(`.`+hash)
-
 	for _, file := range filelist {
 //		if re.MatchString(file) {
 		if strings.HasSuffix(file, hash) {
@@ -553,31 +575,40 @@ func destination_type (destination string) (string) {
 	return ""
 }
 
-func write_to_maildir (message email, directory string) (bool) {
+func write_to_maildir (message email, directory string) (bool, error) {
 	// If homedir is set to /dev/null, silently discard the message
 	if strings.HasPrefix(directory, "/dev/null") {
-		return true
+		return true, nil
 	}
 	// Make sure that destination actually is a directory
 	if !is_directory(directory) {
-		return false
+		return false, errors.New("Not a directory")
+	}
+	// Check if directory is writable
+	if !directory_is_writable(directory) {
+		return false, errors.New("Permission denied")
 	}
 	// Example filename:
 	// 1576429450084839306.27056.bart.lordy.de.7a3e892ba01ce9899d101745da2757a81ac55779
 	filename := epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+sys_hostname()+`.`+message.Sha1
-	writesuccess := write_to_file(message, directory+"/tmp/"+filename)
+	debug("Designated filename is "+filename+"\n")
+	writesuccess, err := write_to_file(message, directory+"/tmp/"+filename)
 
 	if writesuccess {
 		linkerr := os.Link(directory+"/tmp/"+filename, directory+"/new/"+filename)
 		if linkerr == nil {
 			rmerr := os.Remove(directory+"/tmp/"+filename)
 			if rmerr == nil {
-				return true
+				return true, nil
+			} else {
+				return false, rmerr
 			}
+		} else {
+			return false, linkerr
 		}
 	}
 
-	return false
+	return false, err
 }
 
 func sys_hostname () (string) {
@@ -603,12 +634,12 @@ func debug (message string) (bool) {
 //	return spamdstatus == 0
 //}
 
-func env_defined (key string) bool {
+func env_defined (key string) (bool) {
 	_, exists := os.LookupEnv(key)
 	return exists
 }
 
-func autoresponder_history (user string, domain string, sender string, duration int) bool {
+func autoresponder_history (user string, domain string, sender string, duration int) (bool) {
 	var count int
 	debug("Preparing statement in autoresponder_history\n")
 	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = "+strconv.Itoa(email_to_uid(user,domain))+" AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+strconv.Itoa(duration)+")")
@@ -662,7 +693,7 @@ func autoresponder_text (user string, domain string) (string) {
 	return artext
 }
 
-func record_autoresponse (from int, to string) bool {
+func record_autoresponse (from int, to string) (bool) {
 	debug("Preparing statement in record_autoresponse\n")
 	stmt1, err := db.Prepare("INSERT INTO responses VALUES ('', ?, ?, UNIX_TIMESTAMP() )")
         if err != nil {
@@ -679,7 +710,7 @@ func record_autoresponse (from int, to string) bool {
 	return err == nil
 }
 
-func array_sum (input []int) int {
+func array_sum (input []int) (int) {
         var sum int
         for _, i := range input {
                 sum += i
@@ -688,13 +719,13 @@ func array_sum (input []int) int {
         return sum
 }
 
-func is_directory (path string) bool {
+func is_directory (path string) (bool) {
 	fileInfo, err := os.Stat(path)
 	if err != nil { return false }
 	return fileInfo.IsDir()
 }
 
-func is_executable (file string) bool {
+func is_executable (file string) (bool) {
         stat, err := os.Stat(file)
         if err != nil {
                 return false
@@ -745,4 +776,8 @@ func clamd_scan (input *string) (*clamd.Response, error) {
 	// do scan
 	avresult, err := clamc.ScanReader(context.Background(), strings.NewReader(*input))
 	return avresult[0], err
+}
+
+func directory_is_writable (directory string) (bool) {
+	return unix.Access(directory, unix.W_OK) == nil
 }
