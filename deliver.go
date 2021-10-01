@@ -164,16 +164,7 @@ func main() {
 		os.Exit(100)
 	}
 
-//	if feature_enabled(user, domain, "antispam") && spamd_available() {
 	if feature_enabled(user, domain, "antispam") {
-//		tempfile := write_to_tempfile(message)
-//		defer os.Remove(tempfile)
-//		debug("Starting spamc\n")
-//		antispamresult, antispamsuccess, _ := sysexec("/usr/bin/spamc", []string{"-E"}, []byte(message.Raw))
-//		// Spamc will exit 0 on ham, 1 on spam
-//		if antispamsuccess < 2 {
-//			message.Raw = string(antispamresult)
-//		}
 		dreport.Features = append(dreport.Features, "antispam")
 		debug("Running SPAM scan\n")
 		spamresult, spamerr := spamd_scan(&message.Raw)
@@ -185,14 +176,6 @@ func main() {
 	}
 
 	if feature_enabled(user, domain, "antivir") {
-//		tempfile := write_to_tempfile(message)
-//		defer os.Remove(tempfile)
-//		debug("Starting clamdscan\n")
-//		_, antivirsuccess, _ := sysexec("/usr/bin/clamdscan", []string{tempfile}, nil)
-//		if antivirsuccess == 1 {
-//			// Infected mails go to the quarantine
-//			destinations = []string{quarantine}
-//		}
 		dreport.Features = append(dreport.Features, "antivir")
 		debug("Running AV scan\n")
 		avresult, averr := clamd_scan(&message.Raw)
@@ -358,30 +341,10 @@ func write_to_file (message email, filename string) (bool, error) {
 	return werr == nil, werr
 }
 
-//func write_to_tempfile (message email) (string) {
-//	tmpfile, err := ioutil.TempFile("", "qbox")
-//	if err != nil {
-//		return ""
-//	}
-//
-//	_, err = tmpfile.Write([]byte(message.Raw))
-//	if err != nil {
-//		return ""
-//	}
-//
-//	return tmpfile.Name()
-//}
-
 func file_exists (filename string) (bool) {
 	debug("START file_exists: "+filename+"\n")
-//        info, err := os.Stat(filename)
         _, err := os.Stat(filename)
 	return !os.IsNotExist(err)
-//        if os.IsNotExist(err) {
-//                return false, nil
-//        }
-
-//        return !info.IsDir(), nil
 }
 
 func rewrite_domain (domain string) string {
@@ -458,16 +421,12 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ? AND "+feature+" > 0")
         if err != nil {
-//		fmt.Println(err)
-//		os.Exit(111)
 		debug(err.Error())
 		return false
         }
 	debug("Running query in feature_enabled ["+feature+"]\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
-//		fmt.Println(err)
-//              os.Exit(111)
 		debug(err.Error())
 		return false
         }
@@ -498,12 +457,6 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 
 	return output.Bytes(), exitcode, err
 }
-
-//func rfc2822_date () (string) {
-//	layout := "Mon, 02 Jan 2006 15:04:05 UTC"
-//	time := time.Now().UTC()
-//	return time.Format(layout)
-//}
 
 func directory_filelist_recursive (directory string) ([]string, error) {
 	re := regexp.MustCompile("permission denied")
@@ -545,7 +498,6 @@ func is_duplicate (directory string, hash string) (bool) {
 
 	// filelist can be empty, handle this
 	for _, file := range filelist {
-//		if re.MatchString(file) {
 		if strings.HasSuffix(file, hash) {
 			return true
 		}
@@ -629,11 +581,6 @@ func debug (message string) (bool) {
 	return false
 }
 
-//func spamd_available () (bool) {
-//	_, spamdstatus, _ := sysexec("/usr/bin/spamc", []string{"-K"}, nil)
-//	return spamdstatus == 0
-//}
-
 func env_defined (key string) (bool) {
 	_, exists := os.LookupEnv(key)
 	return exists
@@ -698,14 +645,10 @@ func record_autoresponse (from int, to string) (bool) {
 	stmt1, err := db.Prepare("INSERT INTO responses VALUES ('', ?, ?, UNIX_TIMESTAMP() )")
         if err != nil {
 		fmt.Println(err)
-		os.Exit(111)
+		return false
         }
 	debug("Running query in record_autoresponse\n")
 	_, err = stmt1.Exec(from, to)
-//        if err != nil {
-//		fmt.Println(err)
-//               os.Exit(111)
-//      }
 
 	return err == nil
 }
