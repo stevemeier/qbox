@@ -78,6 +78,8 @@ func main() {
 	var deliveryresults []int
 
 	var dreport report
+	dreport.Features = []string{}
+	dreport.Results = []int{}
 	var message email
 	var err error
 
