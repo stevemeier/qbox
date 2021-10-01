@@ -20,7 +20,7 @@ import "syscall"
 import "time"
 import "crypto/sha1"
 
-import "github.com/davecgh/go-spew/spew"
+//import "github.com/davecgh/go-spew/spew"
 import "golang.org/x/sys/unix"
 import jwemail "github.com/jordan-wright/email"
 import "github.com/baruwa-enterprise/clamd"
@@ -148,7 +148,7 @@ func main() {
 	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
 	destinations = get_destinations(user, domain)
 	if debug_enabled {
-		spew.Dump(destinations)
+		debug("Destinations: "+strings.Join(destinations, ",")+"\n")
 	}
 
 	// Check wildcard
@@ -209,7 +209,7 @@ func main() {
 			}
 
 		case "forward":
-			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-fpostmaster@mail.lordy.de", destination}, []byte(message.Raw))
+			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-f"+forward_sender(), destination}, []byte(message.Raw))
 			if fwdsuccess == 0 {
 				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
 			} else {
@@ -723,4 +723,18 @@ func clamd_scan (input *string) (*clamd.Response, error) {
 
 func directory_is_writable (directory string) (bool) {
 	return unix.Access(directory, unix.W_OK) == nil
+}
+
+func forward_sender () (string) {
+	var result string
+	if file_exists(configdir+"/forward_sender") {
+		result = file_content(configdir+"/forward_sender")
+		return chomp(result)
+	}
+
+	return "postmaster@"+sys_hostname()
+}
+
+func chomp (s string) (string) {
+	return strings.TrimRight(s, "\n")
 }
