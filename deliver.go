@@ -193,7 +193,7 @@ func main() {
 				// Virus was found, strip attachments
 				message.Object.Attachments = nil
 				// Add a security note instead
-				message.Object.Attach(strings.NewReader("Attachments have been removed by virus scanner"), "security_notice.txt", "text/plain ")
+				message.Object.Attach(strings.NewReader("Attachments have been removed by virus scanner"), "security_notice.txt", "text/plain")
 			}
 		}
 	}
