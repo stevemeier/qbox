@@ -1,19 +1,28 @@
 #!/bin/sh
 
 # Build requirements
-yum -y install git
+yum -y install git gcc
 yum -y install epel-release
-yum -y install golang
 yum -y install libuuid-devel
+
+# Golang
+curl -Ls https://golang.org/dl/go1.17.1.linux-amd64.tar.gz | tar -C /usr/local -xzvf -
+echo 'export PATH=$PATH:/usr/local/go/bin' > /etc/profile.d/golang.sh
 
 # Database
 yum -y install mariadb-server mariadb
-service mariadb start
+systemctl start mariadb
 
 # Antispam / Antivir
 yum -y install spamassassin clamav
+systemctl start spamassassin 
 freshclam
-service spamassassin start
+echo "TCPSocket 3310" >> /etc/clamd.d/scan.conf
+echo "TCPAddr 127.0.0.1" >> /etc/clamd.d/scan.conf
+systemctl start clamd@scan.service
+
+# IPtables
+iptables -A OUTPUT -p tcp --dport 25 -j DROP
 
 # Install qmail
 yum -y install http://repo.openfusion.net/centos7-x86_64/openfusion-release-0.7-1.of.el7.noarch.rpm
