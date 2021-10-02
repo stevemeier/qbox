@@ -78,6 +78,7 @@ func main() {
 	var deliveryresults []int
 
 	var dreport report
+	dreport.Destinations = []string{}
 	dreport.Features = []string{}
 	dreport.Results = []int{}
 	var message email
@@ -166,6 +167,9 @@ func main() {
 		os.Exit(100)
 	}
 
+	// At this point we have at least one destination for the message
+
+	// Check if spam filter is active for this user
 	if feature_enabled(user, domain, "antispam") {
 		dreport.Features = append(dreport.Features, "antispam")
 		debug("Running SPAM scan\n")
@@ -177,6 +181,7 @@ func main() {
 		}
 	}
 
+	// Check if virus filter is active for this user
 	if feature_enabled(user, domain, "antivir") {
 		dreport.Features = append(dreport.Features, "antivir")
 		debug("Running AV scan\n")
@@ -720,7 +725,11 @@ func clamd_scan (input *string) (*clamd.Response, error) {
 	clamc, _ := clamd.NewClient("tcp", clamd_url)
 	// do scan
 	avresult, err := clamc.ScanReader(context.Background(), strings.NewReader(*input))
-	return avresult[0], err
+	if err == nil {
+		return avresult[0], err
+	} else {
+		return nil, err
+	}
 }
 
 func directory_is_writable (directory string) (bool) {
