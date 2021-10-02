@@ -34,7 +34,8 @@ systemctl enable iptables.service
 yum -y install http://repo.openfusion.net/centos7-x86_64/openfusion-release-0.7-1.of.el7.noarch.rpm
 yum -y install qmail
 yum -y install screen
-echo -e '\n/usr/bin/screen -d -m /var/qmail/rc\n' >> /etc/rc.local
+echo -e '\n/usr/bin/screen -d -m /var/qmail/rc\n' >> /etc/rc.d/rc.local
+chmod 755 /etc/rc.d/rc.local
 /usr/bin/screen -d -m /var/qmail/rc
 
 # Clone and build code
