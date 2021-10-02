@@ -11,14 +11,17 @@ echo 'export PATH=$PATH:/usr/local/go/bin' > /etc/profile.d/golang.sh
 
 # Database
 yum -y install mariadb-server mariadb
+systemctl enable mariadb
 systemctl start mariadb
 
 # Antispam / Antivir
 yum -y install spamassassin clamav clamd
+systemctl enable spamassassin
 systemctl start spamassassin 
 freshclam
 echo "TCPSocket 3310" >> /etc/clamd.d/scan.conf
 echo "TCPAddr 127.0.0.1" >> /etc/clamd.d/scan.conf
+systemctl enable clamd@scan.service
 systemctl start clamd@scan.service
 
 # IPtables
