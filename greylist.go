@@ -51,10 +51,10 @@ func main() {
 	ipobj := net.ParseIP(remoteip)
 	if ipobj.To4() != nil {
 		// remoteip is IPv4
-		remotenet = fmt.Sprint(iplib.NewNet(ipobj, 24).NetworkAddress()) + "/24"
+		remotenet = fmt.Sprint(iplib.NewNet(ipobj, 24).String())
 	} else {
 		// remoteip is IPv6
-		remotenet = fmt.Sprint(iplib.NewNet(ipobj, 56).NetworkAddress()) + "/56"
+		remotenet = fmt.Sprint(iplib.NewNet(ipobj, 56).String())
 	}
 
 	// Same for `remotehost`
