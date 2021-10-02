@@ -25,12 +25,16 @@ systemctl enable clamd@scan.service
 systemctl start clamd@scan.service
 
 # IPtables
+yum install iptables-services
 iptables -A OUTPUT -p tcp --dport 25 -j DROP
+iptables-save > /etc/sysconfig/iptables
+systemctl enable iptables.service
 
 # Install qmail
 yum -y install http://repo.openfusion.net/centos7-x86_64/openfusion-release-0.7-1.of.el7.noarch.rpm
 yum -y install qmail
 yum -y install screen
+echo -e '\n/usr/bin/screen -d -m /var/qmail/rc\n' >> /etc/rc.local
 /usr/bin/screen -d -m /var/qmail/rc
 
 # Clone and build code
