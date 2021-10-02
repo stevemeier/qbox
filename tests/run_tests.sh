@@ -17,7 +17,7 @@ echo
 # Antispam Tests
 echo '*** START: ANTISPAM ***'
 for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=antispam@localhost /opt/qbox/deliver < ${I}; done
-grep -h ^X-Spam-Checker-Version /home/mail/testuser2/INBOX/new/* | sort | uniq -c
+grep -h ^X-Spam-Flag /home/mail/testuser2/INBOX/new/* | sort | uniq -c
 echo '*** END: ANTISPAM ***'
 echo
 

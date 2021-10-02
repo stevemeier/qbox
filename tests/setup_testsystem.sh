@@ -14,7 +14,7 @@ yum -y install mariadb-server mariadb
 systemctl start mariadb
 
 # Antispam / Antivir
-yum -y install spamassassin clamav
+yum -y install spamassassin clamav clamd
 systemctl start spamassassin 
 freshclam
 echo "TCPSocket 3310" >> /etc/clamd.d/scan.conf
