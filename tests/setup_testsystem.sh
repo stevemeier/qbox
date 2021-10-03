@@ -8,6 +8,7 @@ yum -y install libuuid-devel
 # Golang
 curl -Ls https://golang.org/dl/go1.17.1.linux-amd64.tar.gz | tar -C /usr/local -xzvf -
 echo 'export PATH=$PATH:/usr/local/go/bin' > /etc/profile.d/golang.sh
+source /etc/profile
 
 # Database
 yum -y install mariadb-server mariadb
