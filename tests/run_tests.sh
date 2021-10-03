@@ -25,6 +25,7 @@ echo
 echo '*** START: ANTIVIR ***'
 for I in `find /opt/qbox/tests/emails -name '*.eml' -type f`; do RECIPIENT=antivir@localhost /opt/qbox/deliver < ${I}; done
 find /home/mail/testuser3 -type f | wc -l
+grep -h ^X-Virus-Scanned /home/mail/testuser3/INBOX/new/* | sort | uniq -c
 echo '*** END: ANTIVIR ***'
 echo
 
