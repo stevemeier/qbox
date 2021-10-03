@@ -25,7 +25,7 @@ systemctl enable clamd@scan.service
 systemctl start clamd@scan.service
 
 # IPtables
-yum install iptables-services
+yum -y install iptables-services
 iptables -A OUTPUT -p tcp --dport 25 -j DROP
 iptables-save > /etc/sysconfig/iptables
 systemctl enable iptables.service
