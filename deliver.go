@@ -100,7 +100,7 @@ func main() {
 	syslogger.Write([]byte(fmt.Sprintf("%s / Read %d bytes from STDIN", session, len(message.Raw))))
 
 	message.Length = len(message.Raw)
-	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), "qbox-")
+	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), chomp(file_content(configdir + "/prefix")))
 	message.Sha1 = sha1sum(message.Raw)
 	message.Object, _ = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
 
@@ -109,7 +109,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	syslogger.Write([]byte(fmt.Sprintf("%s / Recipient is %s", session, message.Recipient)))
+	syslogger.Write([]byte(fmt.Sprintf("%s / Recipient is <%s>", session, message.Recipient)))
 
 	addrparts := strings.Split(message.Recipient, "@")
         if len(addrparts) < 2 {
@@ -124,7 +124,7 @@ func main() {
 		sender = os.Getenv("SENDER")
 	}
 
-	syslogger.Write([]byte(fmt.Sprintf("%s / Sender is %s", session, sender)))
+	syslogger.Write([]byte(fmt.Sprintf("%s / Sender is <%s>", session, sender)))
 
         // Read config files
         var dbserver string = "127.0.0.1"
