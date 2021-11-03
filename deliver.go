@@ -9,6 +9,7 @@ import "errors"
 import "fmt"
 import "io"
 import "io/ioutil"
+import "log/syslog"
 import "net"
 import "os"
 import "os/exec"
@@ -21,6 +22,7 @@ import "time"
 import "crypto/sha1"
 
 //import "github.com/davecgh/go-spew/spew"
+import "github.com/google/uuid"
 import "golang.org/x/sys/unix"
 import jwemail "github.com/jordan-wright/email"
 import "github.com/baruwa-enterprise/clamd"
@@ -71,6 +73,11 @@ func main() {
 		debug_enabled = true
 	}
 
+	// Initialize a syslogger
+	syslogger, _ := syslog.New(22, os.Args[0])
+	session := uuid.NewString()
+	syslogger.Write([]byte(fmt.Sprintf("%s / Starting", session)))
+
 	// Destinations is an array where email should go
 	var destinations []string
 
@@ -90,6 +97,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	syslogger.Write([]byte(fmt.Sprintf("%s / Read %d bytes from STDIN", session, len(message.Raw))))
+
 	message.Length = len(message.Raw)
 	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), "qbox-")
 	message.Sha1 = sha1sum(message.Raw)
@@ -99,6 +108,8 @@ func main() {
 		fmt.Println("RECIPIENT not set!")
 		os.Exit(1)
 	}
+
+	syslogger.Write([]byte(fmt.Sprintf("%s / Recipient is %s", session, message.Recipient)))
 
 	addrparts := strings.Split(message.Recipient, "@")
         if len(addrparts) < 2 {
@@ -112,6 +123,8 @@ func main() {
 	if env_defined("SENDER") {
 		sender = os.Getenv("SENDER")
 	}
+
+	syslogger.Write([]byte(fmt.Sprintf("%s / Sender is %s", session, sender)))
 
         // Read config files
         var dbserver string = "127.0.0.1"
@@ -168,6 +181,7 @@ func main() {
 	}
 
 	// At this point we have at least one destination for the message
+	syslogger.Write([]byte(fmt.Sprintf("%s / Destinations: %s", session, strings.Join(destinations, ", "))))
 
 	// Check if spam filter is active for this user
 	if feature_enabled(user, domain, "antispam") {
@@ -200,6 +214,7 @@ func main() {
 
 	for _, destination := range destinations {
 		debug("Starting delivery to "+destination+"\n")
+		syslogger.Write([]byte(fmt.Sprintf("%s / Delivering to %s", session, destination)))
 		switch destination_type(destination) {
 		case "maildir":
 			if feature_enabled(user, domain, "dupfilter") && is_duplicate(destination+"/INBOX", message.Sha1) {
@@ -263,7 +278,9 @@ func main() {
 			ar.Text = []byte(autoresponder_text(user, domain))
 
 			arbytes, _ := ar.Bytes()
-			_, arsuccess, _ := sysexec("/var/qmail/bin/qmail-inject", []string{"-f"+message.Recipient, sender}, arbytes)
+			_, arsuccess, _ := sysexec("/var/qmail/bin/qmail-inject",
+						   []string{"-f"+message.Recipient, sender},
+						   arbytes)
 			if arsuccess == 0 {
 				record_autoresponse(email_to_uid(user,domain), sender)
 			}
@@ -291,11 +308,17 @@ func main() {
 	dreport.Results = deliveryresults
 	dreport.Exitcode = exitcode
 	dreport.ProcessingTime = time.Duration(time.Since(start)).Seconds()
+
+	// Put delivery report into JSON
+	json, _ := json.Marshal(dreport)
 	if debug_enabled {
-		json, _ := json.Marshal(dreport)
 		fmt.Fprintf(os.Stderr, "%s", string(json))
 	}
 
+	syslogger.Write([]byte(fmt.Sprintf("%s / Report: %s", session, string(json))))
+	syslogger.Write([]byte(fmt.Sprintf("%s / Finishing with code %d", session, exitcode)))
+
+	_ = syslogger.Close()
 	os.Exit(exitcode)
 }
 
