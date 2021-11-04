@@ -190,7 +190,7 @@ func main() {
 		spamresult, spamerr := spamd_scan(&message.Raw)
 		if spamerr == nil {
 			message.Object.Headers.Set("X-Spam-Flag", bool_yesno(spamresult.IsSpam))
-			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, int(spamresult.Score)))
+			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, not_negative(int(spamresult.Score))))
 			message.UseObject = true
 		}
 	}
@@ -773,4 +773,9 @@ func forward_sender () (string) {
 
 func chomp (s string) (string) {
 	return strings.TrimRight(s, "\n")
+}
+
+func not_negative (i int) (int) {
+	if i < 0 { return 0 }
+	return i
 }
