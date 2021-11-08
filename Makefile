@@ -1,6 +1,6 @@
-all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
+all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 clean:
-	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna messageid mfcheck rblcheck rcpt-verify rwlcheck sessionid spfcheck trust-log
+	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna messageid mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 _goget:
 	go get blitiri.com.ar/go/spf
 	go get github.com/baruwa-enterprise/clamd
@@ -59,6 +59,9 @@ rblcheck:
 rcpt-verify:
 	go build rcpt-verify.go
 	strip rcpt-verify
+returnpath:
+	gcc -O2 -D_FORTIFY_SOURCE -o returnpath returnpath.c
+	strip returnpath
 rwlcheck:
 	gcc -O2 -D_FORTIFY_SOURCE -o rwlcheck rwlcheck.c
 	strip rwlcheck
