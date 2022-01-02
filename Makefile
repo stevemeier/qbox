@@ -1,6 +1,6 @@
-all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
+all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 clean:
-	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver greylist heluna messageid mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
+	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist messageid mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 _goget:
 	go get blitiri.com.ar/go/spf
 	go get github.com/baruwa-enterprise/clamd
@@ -41,12 +41,12 @@ chpasswd:
 deliver:
 	go build deliver.go
 	strip deliver
+filterservice:
+	go build filterservice.go
+	strip filterservice
 greylist:
 	go build greylist.go
 	strip greylist
-heluna:
-	go build heluna.go
-	strip heluna
 messageid:
 	gcc -O2 -D_FORTIFY_SOURCE -luuid -o messageid messageid.c
 	strip messageid
