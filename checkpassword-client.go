@@ -5,19 +5,36 @@ package main
 
 // Load modules
 import "bytes"
+import "encoding/json"
 import "fmt"
-import "gopkg.in/resty.v1"
-import "os"
+import "io/ioutil"
 import "log"
 import "log/syslog"
-import "time"
-import "encoding/json"
+import "net/http"
+import "os"
 import "regexp"
 import "strings"
 import "syscall"
 import "strconv"
+import "time"
+
+var configdir string = "/etc/qbox"
 
 func main() {
+	// Checkpassword server endpoint
+	var cpurl string = "http://127.0.0.1:7520/"
+
+	// Try to read config for URL
+	buf, err := ioutil.ReadFile(configdir + "/checkpassword-url")
+	if err == nil { cpurl = strings.TrimRight(string(buf), "\n") }
+
+	// Dovecot mode indicator
+	// Dovecot does not support the classic checkpassword concept
+	// see: https://wiki2.dovecot.org/AuthDatabase/CheckPassword#Security
+	// Dovecot will call this program as the `dovecot` user which does not have any rights
+	// in the system, so we do not check access to the maildir
+	var dovecot bool = false
+
 	// Setup syslogger
 	// The priority value is calculated using the formula (Priority = Facility * 8 + Level)
 	// https://success.trendmicro.com/solution/TP000086250-What-are-Syslog-Facilities-and-Levels
@@ -74,27 +91,39 @@ func main() {
 	var service string = service_name()
 
 	// Make HTTP call to authentication backend
-	resp, err := resty.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(`{"username":"` + username +
-			`", "password":"` + password +
-			`", "timestamp":"` + timestamp +
-			`", "service":"` + service +
-			`", "source":"` + ipaddr + `"}`).
-		Post("http://127.0.0.1:7520/")
+	// Construct JSON body
+	body, _ := json.Marshal(map[string]string{
+		"username": username,
+		"password": password,
+		"timestamp": timestamp,
+		"service": service,
+		"source": ipaddr,
+	})
 
-	// If the backend is unreachable, exit 3
+	// Setup HTTP client, request and headers
+	client := &http.Client{ Timeout: time.Second * 5 }
+	req, err := http.NewRequest("POST", cpurl, bytes.NewBuffer(body))
+	if err != nil { log.Panic(err) }
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request
+	resp, err := client.Do(req)
 	if err != nil {
-		syslog.Write([]byte("Backend (checkpassword-server) is unreachable"))
+		// If the backend is unreachable, exit 3
+		syslog.Write([]byte(fmt.Sprintf("Backend (checkpassword-server at %s) is unreachable", cpurl)))
 		os.Exit(3)
 	}
+	defer resp.Body.Close()
+
+	// Check if we are called from Dovecot
+	dovecot, _ = regexp.MatchString("(?i)checkpassword-reply", strings.Join(os.Args[1:], " "))
 
 	// 200 means authentication successful
-	if resp.StatusCode() == 200 {
+	if resp.StatusCode == 200 {
 		var response map[string]interface{}
 
 		// Unmarshal response from checkpassword-server
-		err := json.Unmarshal(resp.Body(), &response)
+		err := json.NewDecoder(resp.Body).Decode(&response)
 		if err != nil {
 			syslog.Write([]byte("Failed to unmarshal checkpassword-server response"))
 			os.Exit(4)
@@ -120,34 +149,18 @@ func main() {
 
 		// Go to the home directory
 		err = os.Chdir(response["home"].(string))
-		if err != nil {
-			syslog.Write([]byte("Failed to chdir to users homedir "+response["home"].(string)))
+		if err != nil && !dovecot {
+			// For Dovecot this is not a problem as it will open the folder itself later
+			syslog.Write([]byte(fmt.Sprintf("Failed to chdir to user's homedir %s [%s]", response["home"].(string), err.Error())))
 			os.Exit(5)
 		}
 
-		var args string = strings.Join(os.Args[1:], " ")
-
-		// If called by checkpassword-reply (from Dovecot) return userdb id
-		// If not, setuid/gid to for the user
-		match, _ := regexp.MatchString("(?i)checkpassword-reply", args)
-		if match {
+		if dovecot {
+			// Dovecot expects special variables in the environment
 			os.Setenv("userdb_uid",  fmt.Sprintf("%.0f", response["uid"]))
 			os.Setenv("userdb_gid",  fmt.Sprintf("%.0f", response["gid"]))
 			os.Setenv("userdb_mail", fmt.Sprintf("maildir:%s:LAYOUT=fs:INBOX=%s/INBOX", response["home"], response["home"]))
 			os.Setenv("EXTRA", "userdb_uid userdb_gid userdb_mail")
-
-		// setuid/setgid on with Golang on Linux don't work
-//		} else {
-//			err := syscall.Setgid(int(response["gid"].(float64)))
-//			if err != nil {
-//				syslog.Write([]byte("Failed to setgid: "+err.Error()))
-//				os.Exit(6)
-//			}
-//			err = syscall.Setuid(int(response["uid"].(float64)))
-//			if err != nil {
-//				syslog.Write([]byte("Failed to setuid: "+err.Error()))
-//				os.Exit(6)
-//			}
 		}
 
 		// Run the programm from parameters
