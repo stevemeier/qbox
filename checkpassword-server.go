@@ -27,6 +27,8 @@ import "github.com/hgfischer/go-otp"
 // Getopt
 import "github.com/DavidGamba/go-getoptions"
 
+var Version string
+
 const configdir = "/etc/qbox"
 
 //type authcachedata struct {
@@ -61,6 +63,11 @@ type clientreqdata struct {
 }
 
 var db *sql.DB
+
+func version_info (w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "{\"error\":\"%s\"}\n", Version)
+}
 
 func authenticate(w http.ResponseWriter, r *http.Request) {
 	var services = [...]string {"smtp","smtps","pop","pops","pop3","pop3s","imap","imaps"}
@@ -352,7 +359,8 @@ func main () {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", authenticate).Methods("POST")
-        router.HandleFunc("/{service}/{username}/{password}/{timestamp}/{source}", authenticate).Methods("GET")
+	router.HandleFunc("/version", version_info).Methods("GET")
+	router.HandleFunc("/{service}/{username}/{password}/{timestamp}/{source}", authenticate).Methods("GET")
 	log.Fatal(http.ListenAndServe("127.0.0.1:"+strconv.FormatInt(int64(listenport), 10), router))
 }
 
