@@ -6,6 +6,7 @@ package main
 // Load modules
 import "bytes"
 import "encoding/json"
+import "flag"
 import "fmt"
 import "io/ioutil"
 import "log"
@@ -18,9 +19,19 @@ import "syscall"
 import "strconv"
 import "time"
 
+var Version string
 var configdir string = "/etc/qbox"
 
 func main() {
+	var showver bool
+	flag.BoolVar(&showver, "v", false, "")
+	flag.Parse()
+
+	if showver {
+		fmt.Printf("Version %s\n", Version)
+		os.Exit(0)
+	}
+
 	// Checkpassword server endpoint
 	var cpurl string = "http://127.0.0.1:7520/"
 

@@ -1,8 +1,9 @@
 UNAME := $(shell uname)
 
+DATE := $(shell date +%Y%m%d)
 VERSION := $(shell git rev-parse --short HEAD)
 
-GOLDFLAGS += -X main.Version=$(VERSION)
+GOLDFLAGS += -X main.Version=$(DATE)_$(VERSION)
 GOFLAGS = -ldflags "$(GOLDFLAGS)"
 
 all:	asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
@@ -22,7 +23,9 @@ bouncelimit:
 	strip bouncelimit
 checkpassword-client:
 	go build $(GOFLAGS) checkpassword-client.go
-	strip checkpassword-client
+ifeq ($(UNAME), Linux)
+strip checkpassword-client
+endif
 checkpassword-server:
 	go build $(GOFLAGS) checkpassword-server.go
 ifeq ($(UNAME), Linux)
