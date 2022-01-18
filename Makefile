@@ -5,24 +5,9 @@ VERSION := $(shell git rev-parse --short HEAD)
 GOLDFLAGS += -X main.Version=$(VERSION)
 GOFLAGS = -ldflags "$(GOLDFLAGS)"
 
-all:	_goget asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
+all:	asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 clean:
 	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist messageid mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
-_goget:
-	go get blitiri.com.ar/go/spf
-	go get github.com/baruwa-enterprise/clamd
-	go get github.com/c-robinson/iplib
-	go get github.com/davecgh/go-spew/spew
-	go get github.com/DavidGamba/go-getoptions
-	go get github.com/GehirnInc/crypt
-	go get github.com/go-sql-driver/mysql
-	go get github.com/gorilla/mux
-	go get github.com/hgfischer/go-otp
-	go get github.com/jordan-wright/email
-	go get github.com/mattn/go-sqlite3
-	go get github.com/teamwork/spamc
-	go get golang.org/x/net/publicsuffix
-	go get golang.org/x/sys/unix
 asncheck:
 	go build $(GOFLAGS) asncheck.go
 	strip asncheck
