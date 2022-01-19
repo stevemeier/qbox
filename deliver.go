@@ -28,6 +28,7 @@ import jwemail "github.com/jordan-wright/email"
 import "github.com/baruwa-enterprise/clamd"
 import "github.com/teamwork/spamc"
 
+var Version string
 const configdir = "/etc/qbox"
 var debug_enabled bool = false
 
@@ -76,7 +77,7 @@ func main() {
 	// Initialize a syslogger
 	syslogger, _ := syslog.New(22, os.Args[0])
 	session := uuid.NewString()
-	syslogger.Write([]byte(fmt.Sprintf("%s / Starting", session)))
+	syslogger.Write([]byte(fmt.Sprintf("%s / Starting session [version %s]", session, Version)))
 
 	// Destinations is an array where email should go
 	var destinations []string
