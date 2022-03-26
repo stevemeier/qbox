@@ -161,6 +161,10 @@ func main() {
 	debug("Calling rewrite_domain with parameter: "+domain+"\n")
 	domain = rewrite_domain(domain)
 
+	// Remove extension
+	debug("Removing extension: "+user+" -> "+remove_extension(user)+"\n")
+	user = remove_extension(user)
+
 	// Get destinations
 	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
 	destinations = get_destinations(user, domain)
@@ -779,4 +783,12 @@ func chomp (s string) (string) {
 func not_negative (i int) (int) {
 	if i < 0 { return 0 }
 	return i
+}
+
+func remove_extension (s string) (string) {
+	// https://stackoverflow.com/a/29581738
+	if idx := strings.Index(s, "+"); idx != -1 {
+		return s[:idx]
+	}
+	return s
 }
