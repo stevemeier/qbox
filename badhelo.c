@@ -3,9 +3,37 @@
 #include <string.h>
 #include <unistd.h>
 
+char *chomp(char *str)
+{
+  if (str && *str && str[strlen(str)-1]=='\n') str[strlen(str)-1]=0;
+  return str;
+}
+
+int search_in_file(char *fname, char *str) {
+  FILE *fp;
+  int found = 0;
+  char temp[512];
+
+  // check if file is readbale
+  if ((fp = fopen(fname, "r")) == NULL) {
+    return(-1);
+  }
+
+  while (fgets(temp, 512, fp) != NULL) {
+    if ((strstr(temp, str)) != NULL) {
+      found++;
+    }
+  }
+
+  // close file if still open
+  if (fp) { fclose(fp); }
+
+  return(found);
+}
+
 int main() {
   // read SMTPHELOHOST from environment
-  const char* hostname = getenv("SMTPHELOHOST");
+  const char* hostname = chomp(getenv("SMTPHELOHOST"));
 
   // skip this test for RELAYCLIENT
   // skip this test for TRUSTCLIENT
@@ -32,26 +60,4 @@ int main() {
   // default last action
   printf("\n");
   exit(0);
-}
-
-int search_in_file(char *fname, char *str) {
-  FILE *fp;
-  int found = 0;
-  char temp[512];
-
-  // check if file is readbale
-  if ((fp = fopen(fname, "r")) == NULL) {
-    return(-1);
-  }
-
-  while (fgets(temp, 512, fp) != NULL) {
-    if ((strstr(temp, str)) != NULL) {
-      found++;
-    }
-  }
-
-  // close file if still open
-  if (fp) { fclose(fp); }
-
-  return(found);
 }
