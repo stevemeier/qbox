@@ -48,6 +48,7 @@ rwlcheck:
 	gcc -O2 -D_FORTIFY_SOURCE -o rwlcheck rwlcheck.c
 	strip rwlcheck
 sessionid:
+	# requires libuuid-devel on CentOS 7
 	gcc -O2 -D_FORTIFY_SOURCE -luuid -o sessionid sessionid.c
 	strip sessionid
 spfcheck:
