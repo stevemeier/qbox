@@ -42,6 +42,7 @@ type email struct {
 	Raw		string		// Message as read from STDIN (unaltered)
 	Object		*jwemail.Email	// currently only used for Autoresponder
 	UseObject	bool		// Use object instead of `Raw`, if true
+	IsSpam		bool
 }
 
 type report struct {
@@ -53,6 +54,7 @@ type report struct {
 	Results		[]int
 	Features	[]string
 	Exitcode	int
+	IsSpam		bool
 }
 
 func main() {
@@ -197,7 +199,18 @@ func main() {
 			message.Object.Headers.Set("X-Spam-Flag", bool_yesno(spamresult.IsSpam))
 			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, not_negative(int(spamresult.Score))))
 			message.UseObject = true
+			message.IsSpam = true
 		}
+	}
+
+	// Check for existing Spam markers
+	subjectline := message.Object.Headers.Get("Subject")
+	// This is used by SpamBarrier
+	spamre1 := regexp.MustCompile(`^\*\*\*\*\*SPAM\*\*\*\*\*`)
+	spamre2 := regexp.MustCompile(`\[SPAM\]`)
+	if spamre1.MatchString(subjectline) || spamre2.MatchString(subjectline) {
+		syslogger.Write([]byte(fmt.Sprintf("%s / Message already marked as spam (subject line)", session)))
+		message.IsSpam = true
 	}
 
 	// Check if virus filter is active for this user
@@ -313,6 +326,7 @@ func main() {
 	dreport.Results = deliveryresults
 	dreport.Exitcode = exitcode
 	dreport.ProcessingTime = time.Duration(time.Since(start)).Seconds()
+	dreport.IsSpam = message.IsSpam
 
 	// Put delivery report into JSON
 	json, _ := json.Marshal(dreport)
