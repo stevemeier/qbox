@@ -57,6 +57,11 @@ type report struct {
 	IsSpam		bool
 }
 
+type destination struct {
+	Default		string
+	Spam		string
+}
+
 func main() {
 	// Start a timer
 	start := time.Now()
@@ -458,6 +463,38 @@ func get_destinations (user string, domain string) ([]string) {
 
 	debug("Reached end of get_destinations\n")
 	return destinations
+}
+
+func get_destinations2 (user string, domain string) ([]destination) {
+	var result []destination
+	var homedir string
+	var spamdir string
+
+	debug("Preparing statement in get_destinations2\n")
+        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir, passwd.spamdir FROM passwd "+
+	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
+				 "WHERE user = ? AND domain = ?")
+        if err != nil {
+		os.Exit(111)
+        }
+	debug("Running query in get_destinations2\n")
+        rows1, err := stmt1.Query(user, domain)
+        if err != nil {
+                os.Exit(111)
+        }
+        defer stmt1.Close()
+
+        for rows1.Next() {
+		debug("Scanning row in get_destinations2\n")
+                err := rows1.Scan(&homedir, &spamdir)
+                if err != nil {
+                        os.Exit(111)
+                }
+		result = append(result, destination{homedir, spamdir})
+        }
+
+	debug("Reached end of get_destinations2\n")
+	return result
 }
 
 func feature_enabled (user string, domain string, feature string) (bool) {
