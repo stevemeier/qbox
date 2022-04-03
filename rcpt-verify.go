@@ -32,6 +32,9 @@ func main() {
 	}
 	user, domain := addrparts[0], addrparts[1]
 
+	// 20220403: Support extensions
+	user = remove_extension(user)
+
 	_ = verify_recipient(smtprcptto, user, domain)
 	os.Exit(0)
 }
@@ -129,7 +132,6 @@ func verify_recipient (smtprcptto string, user string, domain string) (bool) {
 		// Recipient found
 		fmt.Fprintf(os.Stderr, "%d Found mapping for %s\n", os.Getppid(), smtprcptto)
 		fmt.Println()
-//		os.Exit(0)
 		return true
 	}
 
@@ -176,4 +178,12 @@ func env_defined(key string) bool {
 
 func internal_error() {
 	fmt.Println("E451 Recipient verification falied")
+}
+
+func remove_extension (s string) (string) {
+	// https://stackoverflow.com/a/29581738
+	if idx := strings.Index(s, "+"); idx != -1 {
+		return s[:idx]
+	}
+	return s
 }
