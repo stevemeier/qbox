@@ -65,6 +65,7 @@ type clientreqdata struct {
 var db *sql.DB
 
 func version_info (w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "{\"version\":\"%s\"}\n", Version)
 }
