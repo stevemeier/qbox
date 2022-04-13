@@ -233,6 +233,10 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		if !update_lastlogin(dbdata.uid, reqdata.Username, reqdata.Service) {
 			fmt.Println("Failed to update lastlogin table for "+reqdata.Username)
 		}
+
+		// Delete previous authentication failures
+		delete(authfail, reqdata.Source)
+
 	} else {
 		// Write to log
 		var logline string
