@@ -66,7 +66,7 @@ var db *sql.DB
 
 func version_info (w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "{\"error\":\"%s\"}\n", Version)
+	fmt.Fprintf(w, "{\"version\":\"%s\"}\n", Version)
 }
 
 func authenticate(w http.ResponseWriter, r *http.Request) {
