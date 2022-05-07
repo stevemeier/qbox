@@ -21,7 +21,6 @@ import "syscall"
 import "time"
 import "crypto/sha1"
 
-//import "github.com/davecgh/go-spew/spew"
 import "github.com/google/uuid"
 import "golang.org/x/sys/unix"
 import jwemail "github.com/jordan-wright/email"
@@ -50,7 +49,7 @@ type report struct {
 	Recipient	string
 	Size		int
 	ProcessingTime	float64
-	Destinations	[]string
+	Destinations	[]destination
 	Results		[]int
 	Features	[]string
 	Exitcode	int
@@ -87,13 +86,14 @@ func main() {
 	syslogger.Write([]byte(fmt.Sprintf("%s / Starting session [version %s]", session, Version)))
 
 	// Destinations is an array where email should go
-	var destinations []string
+	// contains to strings: Default and Spam
+	var destinations []destination
 
 	// Record the delivery results
 	var deliveryresults []int
 
 	var dreport report
-	dreport.Destinations = []string{}
+	dreport.Destinations = []destination{}
 	dreport.Features = []string{}
 	dreport.Results = []int{}
 	var message email
@@ -159,7 +159,7 @@ func main() {
                         os.Exit(exitcode)
                 }
         } else {
-		fmt.Println("ERROR: Could not connect to MySQL "+err.Error())
+		fmt.Println("ERROR: Could not connect to MySQL ["+err.Error()+"]")
                 os.Exit(exitcode)
         }
         defer db.Close()
@@ -174,16 +174,16 @@ func main() {
 
 	// Get destinations
 	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
-	destinations = get_destinations(user, domain)
+	destinations = get_destinations2(user, domain)
 	if debug_enabled {
-		debug("Destinations: "+strings.Join(destinations, ",")+"\n")
+		debug("Destinations: "+list_destinations(destinations)+"\n")
 	}
 
 	// Check wildcard
 	if len(destinations) == 0 {
 		debug("Checking for wildcards\n")
 		user = `*`
-		destinations = get_destinations(user, domain)
+		destinations = get_destinations2(user, domain)
 	}
 
 	// Check if we have at least one destination
@@ -193,7 +193,7 @@ func main() {
 	}
 
 	// At this point we have at least one destination for the message
-	syslogger.Write([]byte(fmt.Sprintf("%s / Destinations: %s", session, strings.Join(destinations, ", "))))
+	syslogger.Write([]byte(fmt.Sprintf("%s / Destinations: %s", session, list_destinations(destinations))))
 
 	// Check if spam filter is active for this user
 	if feature_enabled(user, domain, "antispam") {
@@ -204,14 +204,16 @@ func main() {
 			message.Object.Headers.Set("X-Spam-Flag", bool_yesno(spamresult.IsSpam))
 			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, not_negative(int(spamresult.Score))))
 			message.UseObject = true
-			message.IsSpam = true
+			if user_spamlimit(user, domain) >= spamresult.Score {
+				message.IsSpam = true
+			}
 		}
 	}
 
 	// Check for existing Spam markers
 	subjectline := message.Object.Headers.Get("Subject")
 	// This is used by SpamBarrier
-	spamre1 := regexp.MustCompile(`^\*\*\*\*\*SPAM\*\*\*\*\*`)
+	spamre1 := regexp.MustCompile(`\*\*\*\*\*SPAM\*\*\*\*\*`)
 	spamre2 := regexp.MustCompile(`\[SPAM\]`)
 	if spamre1.MatchString(subjectline) || spamre2.MatchString(subjectline) {
 		syslogger.Write([]byte(fmt.Sprintf("%s / Message already marked as spam (subject line)", session)))
@@ -235,17 +237,26 @@ func main() {
 		}
 	}
 
-	for _, destination := range destinations {
+	for _, dst := range destinations {
+		var destination string
+		destination = dst.Default
+		if message.IsSpam { destination = dst.Spam }
+
 		debug("Starting delivery to "+destination+"\n")
 		syslogger.Write([]byte(fmt.Sprintf("%s / Delivering to %s", session, destination)))
 		switch destination_type(destination) {
 		case "maildir":
-			if feature_enabled(user, domain, "dupfilter") && is_duplicate(destination+"/INBOX", message.Sha1) {
+			if !is_valid_maildir(destination) {
+				fmt.Printf("ERROR: %s is not a valid maildir\n", destination)
+				deliveryresults = append(deliveryresults, 1)
+				break
+			}
+			if feature_enabled(user, domain, "dupfilter") && is_duplicate(destination, message.Sha1) {
 				dreport.Features = append(dreport.Features, "dupfilter")
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 				deliveryresults = append(deliveryresults, 0)
 			} else {
-				writesuccess, err := write_to_maildir(message, destination+"/INBOX")
+				writesuccess, err := write_to_maildir(message, destination)
 				if writesuccess  {
 					fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
 					deliveryresults = append(deliveryresults, 0)
@@ -509,13 +520,13 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ? AND "+feature+" > 0")
         if err != nil {
-		debug(err.Error())
+		debug("ERROR: Failed to prepare feature query ["+err.Error()+"]")
 		return false
         }
 	debug("Running query in feature_enabled ["+feature+"]\n")
 	err = stmt1.QueryRow(user, domain).Scan(&count)
         if err != nil {
-		debug(err.Error())
+		debug("ERROR: Failed to get features from DB ["+err.Error()+"]")
 		return false
         }
 
@@ -554,7 +565,7 @@ func directory_filelist_recursive (directory string) ([]string, error) {
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		// We ignore "permission denied" errors"
 		if err != nil && !re.MatchString(err.Error()) {
-			debug(err.Error())
+			debug("ERROR: Walk encountered an error ["+err.Error()+"]")
 			return err
 		}
 
@@ -842,4 +853,33 @@ func remove_extension (s string) (string) {
 		return s[:idx]
 	}
 	return s
+}
+
+func list_destinations (dst []destination) (string) {
+	var pairs []string
+
+	for _, item := range dst {
+		pairs = append(pairs, fmt.Sprintf("[%s -> %s]", item.Default, item.Spam))
+	}
+
+	return strings.Join(pairs[:], ",")
+}
+
+func is_valid_maildir (dir string) (bool) {
+	return	directory_is_writable(dir+"/cur") &&
+		directory_is_writable(dir+"/new") &&
+		directory_is_writable(dir+"/tmp")
+}
+
+func user_spamlimit (user string, domain string) (float64) {
+	var spamlimit float64
+
+	debug("Preparing statement in user_spamlimit\n")
+	stmt1, err := db.Prepare("SELECT spamlimit FROM passwd WHERE uid = ?")
+
+	debug("Running query in user_spamlimit\n")
+	err = stmt1.QueryRow(email_to_uid(user,domain)).Scan(&spamlimit)
+
+	if err != nil { return 100 }
+	return spamlimit
 }
