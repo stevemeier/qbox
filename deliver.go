@@ -622,7 +622,7 @@ func is_duplicate (directory string, hash string) (bool) {
 
 	// filelist can be empty, handle this
 	for _, file := range filelist {
-		if strings.HasSuffix(file, hash) {
+		if strings.Contains(file, hash) {
 			return true
 		}
 	}
