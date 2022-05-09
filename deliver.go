@@ -185,7 +185,7 @@ func main() {
 
 	// Get destinations
 	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
-	destinations = get_destinations2(user, domain)
+	destinations = get_destinations(user, domain)
 	if debug_enabled {
 		debug("Destinations: "+list_destinations(destinations)+"\n")
 	}
@@ -194,7 +194,7 @@ func main() {
 	if len(destinations) == 0 {
 		debug("Checking for wildcards\n")
 		user = `*`
-		destinations = get_destinations2(user, domain)
+		destinations = get_destinations(user, domain)
 	}
 
 	// Check if we have at least one destination
@@ -259,15 +259,6 @@ func main() {
 		syslogger.Write([]byte(fmt.Sprintf("%s / Delivering to %s", session, destination)))
 		switch destination_type(destination) {
 		case "maildir":
-			// Read and add inbox suffix
-			// `homedir` can have multiple subfolders for IMAP, so we need to know which
-			// folder is considered INBOX (also see Dovecot documentation)
-			// Only do this for normal emails, not Spam
-//			if len(file_content(configdir + "/inbox")) > 0 && !message.IsSpam {
-//				destination = path.Clean(destination + "/" + chomp(file_content(configdir + "/inbox")))
-//				debug("Maildir after attaching inbox suffix: "+destination+"\n")
-//			}
-
 			if !is_valid_maildir(destination) {
 				fmt.Printf("ERROR: %s is not a valid maildir\n", destination)
 				deliveryresults = append(deliveryresults, 1)
@@ -473,12 +464,13 @@ func rewrite_domain (domain string) string {
 	return domain
 }
 
-func get_destinations (user string, domain string) ([]string) {
-	var destinations []string
+func get_destinations (user string, domain string) ([]destination) {
+	var result []destination
 	var homedir string
+	var spamdir string
 
 	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir FROM passwd "+
+        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir, passwd.spamdir FROM passwd "+
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ?")
         if err != nil {
@@ -493,47 +485,19 @@ func get_destinations (user string, domain string) ([]string) {
 
         for rows1.Next() {
 		debug("Scanning row in get_destinations\n")
-                err := rows1.Scan(&homedir)
-                if err != nil {
-                        os.Exit(111)
-                }
-		destinations = append(destinations, homedir)
-        }
-
-	debug("Reached end of get_destinations\n")
-	return destinations
-}
-
-func get_destinations2 (user string, domain string) ([]destination) {
-	var result []destination
-	var homedir string
-	var spamdir string
-
-	debug("Preparing statement in get_destinations2\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir, passwd.spamdir FROM passwd "+
-	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
-				 "WHERE user = ? AND domain = ?")
-        if err != nil {
-		os.Exit(111)
-        }
-	debug("Running query in get_destinations2\n")
-        rows1, err := stmt1.Query(user, domain)
-        if err != nil {
-                os.Exit(111)
-        }
-        defer stmt1.Close()
-
-        for rows1.Next() {
-		debug("Scanning row in get_destinations2\n")
                 err := rows1.Scan(&homedir, &spamdir)
                 if err != nil {
                         os.Exit(111)
                 }
+
+		// Fallback to default if spamdir is not set
+		if (spamdir == "") { spamdir = homedir }
+
 		result = append(result, destination{path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox"))),
 						    path.Clean(homedir + "/" + spamdir)})
         }
 
-	debug("Reached end of get_destinations2\n")
+	debug("Reached end of get_destinations\n")
 	return result
 }
 
