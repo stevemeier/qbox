@@ -733,7 +733,7 @@ func autoresponder_history (user string, domain string, sender string, duration 
 func email_to_uid (user string, domain string) (int) {
 	var uid int
 	debug("Preparing statement in email_to_uid\n")
-	stmt1, err := db.Prepare("SELECT uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
