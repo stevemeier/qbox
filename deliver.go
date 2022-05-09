@@ -55,6 +55,7 @@ type report struct {
 	Results		[]int
 	Features	[]string
 	Exitcode	int
+	ObjectOK	bool
 	UseObject	bool
 	IsSpam		bool
 	OnDisk		int64
@@ -363,6 +364,7 @@ func main() {
 	dreport.Exitcode = exitcode
 	dreport.ProcessingTime = time.Duration(time.Since(start)).Seconds()
 	dreport.UseObject = message.UseObject
+	dreport.ObjectOK = message.ObjectOK
 	dreport.IsSpam = message.IsSpam
 
 	// Put delivery report into JSON
