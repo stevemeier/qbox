@@ -13,6 +13,7 @@ import "log/syslog"
 import "net"
 import "os"
 import "os/exec"
+import "path"
 import "path/filepath"
 import "regexp"
 import "strconv"
@@ -248,6 +249,12 @@ func main() {
 		syslogger.Write([]byte(fmt.Sprintf("%s / Delivering to %s", session, destination)))
 		switch destination_type(destination) {
 		case "maildir":
+			// Read and add inbox suffix
+			// `homedir` can have multiple subfolders for IMAP, so we need to know which
+			// folder is considered INBOX (also see Dovecot documentation)
+			destination = destination + chomp(file_content(configdir + "/inbox"))
+			debug("Maildir after attaching inbox suffix: "+destination+"\n")
+
 			if !is_valid_maildir(destination) {
 				fmt.Printf("ERROR: %s is not a valid maildir\n", destination)
 				deliveryresults = append(deliveryresults, 1)
@@ -505,7 +512,7 @@ func get_destinations2 (user string, domain string) ([]destination) {
                 if err != nil {
                         os.Exit(111)
                 }
-		result = append(result, destination{homedir, spamdir})
+		result = append(result, destination{homedir, path.Clean(homedir + "/" + spamdir)})
         }
 
 	debug("Reached end of get_destinations2\n")
