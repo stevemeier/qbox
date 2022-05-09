@@ -41,6 +41,7 @@ type email struct {
 	Sha1		string
 	Raw		string		// Message as read from STDIN (unaltered)
 	Object		*jwemail.Email	// currently only used for Autoresponder
+	ObjectOK	bool		// Indicates if mail was parsed successfully by jwemail
 	UseObject	bool		// Use object instead of `Raw`, if true
 	IsSpam		bool
 }
@@ -113,7 +114,13 @@ func main() {
 	message.Length = len(message.Raw)
 	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), chomp(file_content(configdir + "/prefix")))
 	message.Sha1 = sha1sum(message.Raw)
-	message.Object, _ = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
+
+	// NewEmailFromReader can fail (e.g. escaping issues)
+	// If it does, we can't use the object
+	// Conveniently, ObjectOK is `false` by default, so we set it to true if the parser does not complain
+	var newmailerr error
+	message.Object, newmailerr = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
+	if newmailerr == nil { message.ObjectOK = true }
 
 	if (len(message.Recipient) == 0) {
 		fmt.Println("RECIPIENT not set!")
@@ -408,7 +415,8 @@ func write_to_file (message email, filename string) (bool, error) {
 
 	debug("Writing to "+filename+"\n")
 	var werr error
-	if message.UseObject {
+	if message.UseObject && message.ObjectOK {
+		// This has never failed so far, but we check anyway
 		objbytes, byteerr := message.Object.Bytes()
 		if byteerr == nil {
 			werr = ioutil.WriteFile(filename, objbytes, 0600)
