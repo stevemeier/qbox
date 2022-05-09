@@ -229,6 +229,7 @@ func main() {
 		debug("Running AV scan\n")
 		avresult, averr := clamd_scan(&message.Raw)
 		if averr == nil {
+			debug("AV result: "+ avresult.Status +"\n")
 			message.Object.Headers.Set("X-Virus-Scanned", "ClamAV")
 			message.UseObject = true
 			if avresult.Status != "OK" {
