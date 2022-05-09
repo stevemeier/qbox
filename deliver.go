@@ -262,10 +262,10 @@ func main() {
 			// `homedir` can have multiple subfolders for IMAP, so we need to know which
 			// folder is considered INBOX (also see Dovecot documentation)
 			// Only do this for normal emails, not Spam
-			if len(file_content(configdir + "/inbox")) > 0 && !message.IsSpam {
-				destination = path.Clean(destination + "/" + chomp(file_content(configdir + "/inbox")))
-				debug("Maildir after attaching inbox suffix: "+destination+"\n")
-			}
+//			if len(file_content(configdir + "/inbox")) > 0 && !message.IsSpam {
+//				destination = path.Clean(destination + "/" + chomp(file_content(configdir + "/inbox")))
+//				debug("Maildir after attaching inbox suffix: "+destination+"\n")
+//			}
 
 			if !is_valid_maildir(destination) {
 				fmt.Printf("ERROR: %s is not a valid maildir\n", destination)
@@ -528,7 +528,8 @@ func get_destinations2 (user string, domain string) ([]destination) {
                 if err != nil {
                         os.Exit(111)
                 }
-		result = append(result, destination{homedir, path.Clean(homedir + "/" + spamdir)})
+		result = append(result, destination{path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox"))),
+						    path.Clean(homedir + "/" + spamdir)})
         }
 
 	debug("Reached end of get_destinations2\n")
