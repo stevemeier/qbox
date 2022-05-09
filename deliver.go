@@ -216,6 +216,7 @@ func main() {
 			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, not_negative(int(spamresult.Score))))
 			message.UseObject = true
 			if user_spamlimit(user, domain) >= spamresult.Score {
+				debug("Message has exceeded user's Spam limit of "+fmt.Sprintf("%f", user_spamlimit(user, domain))+"\n")
 				message.IsSpam = true
 			}
 		}
