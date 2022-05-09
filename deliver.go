@@ -271,8 +271,9 @@ func main() {
 				deliveryresults = append(deliveryresults, 1)
 				break
 			}
+
+			if feature_enabled(user, domain, "dupfilter") { dreport.Features = append(dreport.Features, "dupfilter") }
 			if feature_enabled(user, domain, "dupfilter") && is_duplicate(destination, message.Sha1) {
-				dreport.Features = append(dreport.Features, "dupfilter")
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 				deliveryresults = append(deliveryresults, 0)
 			} else {
