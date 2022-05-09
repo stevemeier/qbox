@@ -222,7 +222,7 @@ func main() {
 	}
 
 	// Check for existing Spam markers
-	subjectline := message.Object.Headers.Get("Subject")
+	subjectline := message.Object.Subject
 	// This is used by SpamBarrier
 	spamre1 := regexp.MustCompile(`\*\*\*\*\*SPAM\*\*\*\*\*`)
 	spamre2 := regexp.MustCompile(`\[SPAM\]`)
