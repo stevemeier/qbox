@@ -261,7 +261,8 @@ func main() {
 			// Read and add inbox suffix
 			// `homedir` can have multiple subfolders for IMAP, so we need to know which
 			// folder is considered INBOX (also see Dovecot documentation)
-			if len(file_content(configdir + "/inbox")) > 0 {
+			// Only do this for normal emails, not Spam
+			if len(file_content(configdir + "/inbox")) > 0 && !message.IsSpam {
 				destination = path.Clean(destination + "/" + chomp(file_content(configdir + "/inbox")))
 				debug("Maildir after attaching inbox suffix: "+destination+"\n")
 			}
