@@ -53,7 +53,9 @@ type report struct {
 	Results		[]int
 	Features	[]string
 	Exitcode	int
+	UseObject	bool
 	IsSpam		bool
+	OnDisk		int64
 }
 
 type destination struct {
@@ -256,7 +258,8 @@ func main() {
 				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
 				deliveryresults = append(deliveryresults, 0)
 			} else {
-				writesuccess, err := write_to_maildir(message, destination)
+				writesuccess, err, ondisk := write_to_maildir(message, destination)
+				dreport.OnDisk = ondisk
 				if writesuccess  {
 					fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
 					deliveryresults = append(deliveryresults, 0)
@@ -342,6 +345,7 @@ func main() {
 	dreport.Results = deliveryresults
 	dreport.Exitcode = exitcode
 	dreport.ProcessingTime = time.Duration(time.Since(start)).Seconds()
+	dreport.UseObject = message.UseObject
 	dreport.IsSpam = message.IsSpam
 
 	// Put delivery report into JSON
@@ -626,40 +630,41 @@ func destination_type (destination string) (string) {
 	return ""
 }
 
-func write_to_maildir (message email, directory string) (bool, error) {
+func write_to_maildir (message email, directory string) (bool, error, int64) {
 	// If homedir is set to /dev/null, silently discard the message
 	if strings.HasPrefix(directory, "/dev/null") {
-		return true, nil
+		return true, nil, -1
 	}
 	// Make sure that destination actually is a directory
 	if !is_directory(directory) {
-		return false, errors.New("Not a directory")
+		return false, errors.New("Not a directory"), -1
 	}
 	// Check if directory is writable
 	if !directory_is_writable(directory) {
-		return false, errors.New("Permission denied")
+		return false, errors.New("Permission denied"), -1
 	}
 	// Example filename:
 	// 1576429450084839306.27056.bart.lordy.de.7a3e892ba01ce9899d101745da2757a81ac55779
 	filename := epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+sys_hostname()+`.`+message.Sha1
 	debug("Designated filename is "+filename+"\n")
 	writesuccess, err := write_to_file(message, directory+"/tmp/"+filename)
+	ondisk := filesize(directory+"/tmp/"+filename)
 
 	if writesuccess {
 		linkerr := os.Link(directory+"/tmp/"+filename, directory+"/new/"+filename)
 		if linkerr == nil {
 			rmerr := os.Remove(directory+"/tmp/"+filename)
 			if rmerr == nil {
-				return true, nil
+				return true, nil, ondisk
 			} else {
-				return false, rmerr
+				return false, rmerr, ondisk
 			}
 		} else {
-			return false, linkerr
+			return false, linkerr, ondisk
 		}
 	}
 
-	return false, err
+	return false, err, ondisk
 }
 
 func sys_hostname () (string) {
@@ -882,4 +887,13 @@ func user_spamlimit (user string, domain string) (float64) {
 
 	if err != nil { return 100 }
 	return spamlimit
+}
+
+func filesize (filename string) (int64) {
+	fi, err := os.Stat(filename)
+	if err != nil {
+		return -1
+	}
+
+	return fi.Size()
 }
