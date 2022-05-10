@@ -490,9 +490,6 @@ func get_destinations (user string, domain string) ([]destination) {
                         os.Exit(111)
                 }
 
-		// Fallback to default if spamdir is not set
-		if (spamdir == "") { spamdir = homedir }
-
 		result = append(result, destination{path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox"))),
 						    path.Clean(homedir + "/" + spamdir)})
         }
