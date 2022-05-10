@@ -470,7 +470,7 @@ func get_destinations (user string, domain string) ([]destination) {
 	var spamdir string
 
 	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir, passwd.spamdir FROM passwd "+
+        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir, COALESCE(passwd.spamdir,'') FROM passwd "+
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ?")
         if err != nil {
@@ -869,7 +869,7 @@ func user_spamlimit (user string, domain string) (float64) {
 	var spamlimit float64
 
 	debug("Preparing statement in user_spamlimit\n")
-	stmt1, err := db.Prepare("SELECT spamlimit FROM passwd WHERE uid = ?")
+	stmt1, err := db.Prepare("SELECT COALESCE(spamlimit,0) FROM passwd WHERE uid = ?")
 
 	debug("Running query in user_spamlimit\n")
 	err = stmt1.QueryRow(email_to_uid(user,domain)).Scan(&spamlimit)
