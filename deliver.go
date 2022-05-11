@@ -887,3 +887,16 @@ func filesize (filename string) (int64) {
 
 	return fi.Size()
 }
+
+func syslog_write (message string) (error) {
+	// If run in debug mode, we write to STDERR, not syslog
+	if debug_enabled {
+		fmt.Fprintf(os.Stderr, message)
+		return nil
+	} else {
+		syslogger, _ := syslog.New(22, os.Args[0])
+		_, err := syslogger.Write([]byte(message))
+		_ = syslogger.Close()
+		return err
+	}
+}
