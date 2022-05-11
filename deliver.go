@@ -301,6 +301,10 @@ func main() {
 			}
 			deliveryresults = append(deliveryresults, execsuccess)
 
+		case "":
+			fmt.Println("Homedir is not defined for "+message.Recipient)
+                        deliveryresults = append(deliveryresults, 111)
+
 		default:
 			fmt.Println("Can not handle "+destination+" for "+message.Recipient)
 			deliveryresults = append(deliveryresults, 111)
@@ -470,7 +474,7 @@ func get_destinations (user string, domain string) ([]destination) {
 	var spamdir string
 
 	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT passwd.homedir, COALESCE(passwd.spamdir,'') FROM passwd "+
+        stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(passwd.homedir,''), COALESCE(passwd.spamdir,'') FROM passwd "+
 	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
 				 "WHERE user = ? AND domain = ?")
         if err != nil {
