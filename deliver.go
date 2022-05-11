@@ -85,10 +85,9 @@ func main() {
 		debug_enabled = true
 	}
 
-	// Initialize a syslogger
-	syslogger, _ := syslog.New(22, os.Args[0])
+	// Generate a session ID to make log grep-ing easier
 	session := uuid.NewString()
-	syslogger.Write([]byte(fmt.Sprintf("%s / Starting session [version %s]", session, Version)))
+	syslog_write(fmt.Sprintf("%s / Starting session [version %s]", session, Version))
 
 	// Destinations is an array where email should go
 	// contains to strings: Default and Spam
@@ -110,7 +109,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	syslogger.Write([]byte(fmt.Sprintf("%s / Read %d bytes from STDIN", session, len(message.Raw))))
+	syslog_write(fmt.Sprintf("%s / Read %d bytes from STDIN", session, len(message.Raw)))
 
 	message.Length = len(message.Raw)
 	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), chomp(file_content(configdir + "/prefix")))
@@ -128,7 +127,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	syslogger.Write([]byte(fmt.Sprintf("%s / Recipient is <%s>", session, message.Recipient)))
+	syslog_write(fmt.Sprintf("%s / Recipient is <%s>", session, message.Recipient))
 
 	addrparts := strings.Split(message.Recipient, "@")
         if len(addrparts) < 2 {
@@ -143,7 +142,7 @@ func main() {
 		sender = os.Getenv("SENDER")
 	}
 
-	syslogger.Write([]byte(fmt.Sprintf("%s / Sender is <%s>", session, sender)))
+	syslog_write(fmt.Sprintf("%s / Sender is <%s>", session, sender))
 
         // Read config files
         var dbserver string = "127.0.0.1"
@@ -204,7 +203,7 @@ func main() {
 	}
 
 	// At this point we have at least one destination for the message
-	syslogger.Write([]byte(fmt.Sprintf("%s / Destinations: %s", session, list_destinations(destinations))))
+	syslog_write(fmt.Sprintf("%s / Destinations: %s", session, list_destinations(destinations)))
 
 	// Check if spam filter is active for this user
 	if feature_enabled(user, domain, "antispam") {
@@ -228,7 +227,7 @@ func main() {
 	spamre1 := regexp.MustCompile(`\*\*\*\*\*SPAM\*\*\*\*\*`)
 	spamre2 := regexp.MustCompile(`\[SPAM\]`)
 	if spamre1.MatchString(subjectline) || spamre2.MatchString(subjectline) {
-		syslogger.Write([]byte(fmt.Sprintf("%s / Message already marked as spam (subject line)", session)))
+		syslog_write(fmt.Sprintf("%s / Message already marked as spam (subject line)", session))
 		message.IsSpam = true
 	}
 
@@ -256,7 +255,7 @@ func main() {
 		if message.IsSpam { destination = dst.Spam }
 
 		debug("Starting delivery to "+destination+"\n")
-		syslogger.Write([]byte(fmt.Sprintf("%s / Delivering to %s", session, destination)))
+		syslog_write(fmt.Sprintf("%s / Delivering to %s", session, destination))
 		switch destination_type(destination) {
 		case "maildir":
 			if !is_valid_maildir(destination) {
@@ -372,10 +371,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s", string(json))
 	}
 
-	syslogger.Write([]byte(fmt.Sprintf("%s / Report: %s", session, string(json))))
-	syslogger.Write([]byte(fmt.Sprintf("%s / Finishing with code %d", session, exitcode)))
+	syslog_write(fmt.Sprintf("%s / Report: %s", session, string(json)))
+	syslog_write(fmt.Sprintf("%s / Finishing with code %d", session, exitcode))
 
-	_ = syslogger.Close()
 	os.Exit(exitcode)
 }
 
