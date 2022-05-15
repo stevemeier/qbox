@@ -472,14 +472,12 @@ func get_destinations (user string, domain string) ([]destination) {
 	var spamdir string
 
 	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(passwd.homedir,''), COALESCE(passwd.spamdir,'') FROM passwd "+
-	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
-				 "WHERE user = ? AND domain = ?")
+        stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid = ?")
         if err != nil {
 		os.Exit(111)
         }
 	debug("Running query in get_destinations\n")
-        rows1, err := stmt1.Query(user, domain)
+        rows1, err := stmt1.Query(email_to_uid(user, domain))
         if err != nil {
                 os.Exit(111)
         }
@@ -492,8 +490,21 @@ func get_destinations (user string, domain string) ([]destination) {
                         os.Exit(111)
                 }
 
-		result = append(result, destination{path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox"))),
-						    path.Clean(homedir + "/" + spamdir)})
+		// Add `INBOX` suffix and make sure homedir is clean
+		homedir = path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox")))
+
+		// If `spamdir` is empty, we use `homedir` instead
+		// Otherwise, `spamdir` is a relative path to `homedir`, which we clean before using it
+		if spamdir == "" {
+			spamdir = homedir
+		} else {
+			spamdir = path.Clean(homedir + "/" + spamdir)
+		}
+
+//		result = append(result, destination{path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox"))),
+//						    path.Clean(homedir + "/" + spamdir)})
+
+		result = append(result, destination{homedir, spamdir})
         }
 
 	debug("Reached end of get_destinations\n")
@@ -508,15 +519,13 @@ func feature_enabled (user string, domain string, feature string) (bool) {
 	// `dupfilter`
 	var count int
 	debug("Preparing statement in feature_enabled ["+feature+"]\n")
-	stmt1, err := db.Prepare("SELECT COUNT(passwd."+feature+") FROM passwd "+
-	                         "INNER JOIN mapping ON passwd.uid = mapping.uid "+
-				 "WHERE user = ? AND domain = ? AND "+feature+" > 0")
+	stmt1, err := db.Prepare("SELECT COUNT("+feature+") FROM passwd WHERE uid = ? AND "+feature+" > 0")
         if err != nil {
 		debug("ERROR: Failed to prepare feature query ["+err.Error()+"]")
 		return false
         }
 	debug("Running query in feature_enabled ["+feature+"]\n")
-	err = stmt1.QueryRow(user, domain).Scan(&count)
+	err = stmt1.QueryRow(email_to_uid(user, domain)).Scan(&count)
         if err != nil {
 		debug("ERROR: Failed to get features from DB ["+err.Error()+"]")
 		return false
@@ -681,13 +690,13 @@ func env_defined (key string) (bool) {
 func autoresponder_history (user string, domain string, sender string, duration int) (bool) {
 	var count int
 	debug("Preparing statement in autoresponder_history\n")
-	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = "+strconv.Itoa(email_to_uid(user,domain))+" AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+strconv.Itoa(duration)+")")
+	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = ? AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+strconv.Itoa(duration)+")")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
         }
 	debug("Running query in autoresponder_history\n")
-	err = stmt1.QueryRow(user, domain).Scan(&count)
+	err = stmt1.QueryRow(email_to_uid(user, domain), sender).Scan(&count)
         if err != nil {
 		fmt.Println(err)
                 os.Exit(111)
@@ -717,13 +726,13 @@ func email_to_uid (user string, domain string) (int) {
 func autoresponder_text (user string, domain string) (string) {
 	var artext string
 	debug("Preparing statement in autresponder_text\n")
-	stmt1, err := db.Prepare("SELECT artext FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+	stmt1, err := db.Prepare("SELECT artext FROM passwd WHERE uid = ?")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
         }
 	debug("Running query in autresponder_text\n")
-	err = stmt1.QueryRow(user, domain).Scan(&artext)
+	err = stmt1.QueryRow(email_to_uid(user, domain)).Scan(&artext)
         if err != nil {
 		fmt.Println(err)
                 os.Exit(111)
