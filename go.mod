@@ -21,4 +21,5 @@ require (
 	github.com/teamwork/utils v0.0.0-20211112162623-194b7eff720f // indirect
 	golang.org/x/net v0.0.0-20181220203305-927f97764cc3
 	golang.org/x/sys v0.0.0-20210507161434-a76c4d0a0096
+	gopkg.in/yaml.v3 v3.0.0 // indirect
 )
