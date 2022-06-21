@@ -470,6 +470,8 @@ func get_destinations (user string, domain string) ([]destination) {
 	var result []destination
 	var homedir string
 	var spamdir string
+	var dbhomedir string
+	var dbspamdir string
 
 	debug("Preparing statement in get_destinations\n")
         stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid = ?")
@@ -485,26 +487,26 @@ func get_destinations (user string, domain string) ([]destination) {
 
         for rows1.Next() {
 		debug("Scanning row in get_destinations\n")
-                err := rows1.Scan(&homedir, &spamdir)
+                err := rows1.Scan(&dbhomedir, &dbspamdir)
                 if err != nil {
                         os.Exit(111)
                 }
 
+		// By default we take the DB's homedir as-is
+		homedir = dbhomedir
+
 		// Add `INBOX` suffix and make sure homedir is clean
-		if homedir[0:1] == "/" {
-			homedir = path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox")))
+		if dbhomedir[0:1] == "/" {
+			homedir = path.Clean(dbhomedir + "/" + chomp(file_content(configdir + "/inbox")))
 		}
 
 		// If `spamdir` is empty, we use `homedir` instead
 		// Otherwise, `spamdir` is a relative path to `homedir`, which we clean before using it
-		if spamdir == "" {
+		if dbspamdir == "" {
 			spamdir = homedir
 		} else {
-			spamdir = path.Clean(homedir + "/" + spamdir)
+			spamdir = path.Clean(dbhomedir + "/" + dbspamdir)
 		}
-
-//		result = append(result, destination{path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox"))),
-//						    path.Clean(homedir + "/" + spamdir)})
 
 		result = append(result, destination{homedir, spamdir})
         }
