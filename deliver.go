@@ -708,7 +708,7 @@ func autoresponder_history (user string, domain string, sender string, duration 
 }
 
 func email_to_uid (user string, domain string) (int) {
-	var uid int
+	var uid int = -1
 	debug("Preparing statement in email_to_uid\n")
 	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
         if err != nil {
@@ -717,6 +717,13 @@ func email_to_uid (user string, domain string) (int) {
         }
 	debug("Running query in email_to_uid\n")
 	err = stmt1.QueryRow(user, domain).Scan(&uid)
+
+	// If the first query procudes no result, check for wildcard mapping
+	if err == sql.ErrNoRows {
+		err = stmt1.QueryRow("*", domain).Scan(&uid)
+	}
+
+	// If error is still not nil, we have no mapping and need to defer delivery
         if err != nil {
 		fmt.Println(err)
                 os.Exit(111)
@@ -880,6 +887,10 @@ func user_spamlimit (user string, domain string) (float64) {
 
 	debug("Preparing statement in user_spamlimit\n")
 	stmt1, err := db.Prepare("SELECT COALESCE(spamlimit,0) FROM passwd WHERE uid = ?")
+        if err != nil {
+		fmt.Println(err)
+		return 0
+        }
 
 	debug("Running query in user_spamlimit\n")
 	err = stmt1.QueryRow(email_to_uid(user,domain)).Scan(&spamlimit)
@@ -900,7 +911,7 @@ func filesize (filename string) (int64) {
 func syslog_write (message string) (error) {
 	// If run in debug mode, we write to STDERR, not syslog
 	if debug_enabled {
-		fmt.Fprintf(os.Stderr, message)
+		fmt.Fprint(os.Stderr, message)
 		return nil
 	} else {
 		syslogger, _ := syslog.New(22, os.Args[0])
