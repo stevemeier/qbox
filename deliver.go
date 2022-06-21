@@ -491,7 +491,9 @@ func get_destinations (user string, domain string) ([]destination) {
                 }
 
 		// Add `INBOX` suffix and make sure homedir is clean
-		homedir = path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox")))
+		if homedir[0:1] == "/" {
+			homedir = path.Clean(homedir + "/" + chomp(file_content(configdir + "/inbox")))
+		}
 
 		// If `spamdir` is empty, we use `homedir` instead
 		// Otherwise, `spamdir` is a relative path to `homedir`, which we clean before using it
