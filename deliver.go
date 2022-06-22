@@ -440,13 +440,13 @@ func rewrite_domain (domain string) string {
         var rewrite sql.NullString
         stmt1, err := db.Prepare("SELECT rewrite FROM domains WHERE domain = ? AND rewrite != ''")
         if err != nil {
-		fmt.Println("DEBUG: Failed to prepare statement in rewrite_domain")
+		debug("Failed to prepare statement in rewrite_domain")
 		os.Exit(111)
         }
 
         rows1, err := stmt1.Query(domain)
         if err != nil {
-		fmt.Println("DEBUG: Failed to execute query in rewrite_domain")
+		debug("Failed to execute query in rewrite_domain")
                 os.Exit(111)
         }
         defer stmt1.Close()
@@ -454,7 +454,7 @@ func rewrite_domain (domain string) string {
         for rows1.Next() {
                 err := rows1.Scan(&rewrite)
                 if err != nil {
-			fmt.Println("DEBUG: Failed to scan row in rewrite_domain "+err.Error())
+			debug("Failed to scan row in rewrite_domain "+err.Error())
                         os.Exit(111)
                 }
         }
