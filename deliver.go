@@ -741,7 +741,8 @@ func email_to_uids (user string, domain string) ([]int) {
 	var rows *sql.Rows
 
 	debug("Preparing statement in email_to_uids\n")
-	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+//	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+	stmt1, err := db.Prepare("SELECT DISTINCT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE (user = ? OR user = '*') AND domain = ?")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
@@ -750,9 +751,10 @@ func email_to_uids (user string, domain string) ([]int) {
 	rows, err = stmt1.Query(user, domain)
 
 	// If the first query procudes no result, check for wildcard mapping
-	if err == sql.ErrNoRows {
-		rows, err = stmt1.Query("*", domain)
-	}
+	// This only works for QueryRow(), not Query()
+//	if err == sql.ErrNoRows {
+//		rows, err = stmt1.Query("*", domain)
+//	}
 
 	// Iterate over results
 	for rows.Next() {
