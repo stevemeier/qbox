@@ -476,11 +476,15 @@ func get_destinations (user string, domain string) ([]destination) {
 	debug("Preparing statement in get_destinations\n")
         stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid IN (?)")
         if err != nil {
+		fmt.Println(err)
 		os.Exit(111)
         }
 	debug("Running query in get_destinations\n")
-        rows1, err := stmt1.Query(email_to_uids(user, domain))
+//	rows1, err := stmt1.Query(strings.Join(email_to_uids(user, domain), ","))
+//	rows1, err := stmt1.Query(fmt.Sprintf("%v", email_to_uids(user, domain)))
+	rows1, err := stmt1.Query(ints_to_list(email_to_uids(user, domain)))
         if err != nil {
+		fmt.Println(err)
                 os.Exit(111)
         }
         defer stmt1.Close()
@@ -489,6 +493,7 @@ func get_destinations (user string, domain string) ([]destination) {
 		debug("Scanning row in get_destinations\n")
                 err := rows1.Scan(&dbhomedir, &dbspamdir)
                 if err != nil {
+			fmt.Println(err)
                         os.Exit(111)
                 }
 
@@ -958,4 +963,13 @@ func syslog_write (message string) (error) {
 		_ = syslogger.Close()
 		return err
 	}
+}
+
+func ints_to_list (ints []int) (string) {
+	var s []string
+	for _, i := range ints {
+		s = append(s, strconv.Itoa(i))
+	}
+
+	return strings.Join(s, ",")
 }
