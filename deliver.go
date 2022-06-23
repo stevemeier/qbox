@@ -474,12 +474,12 @@ func get_destinations (user string, domain string) ([]destination) {
 	var dbspamdir string
 
 	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid = ?")
+        stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid IN (?)")
         if err != nil {
 		os.Exit(111)
         }
 	debug("Running query in get_destinations\n")
-        rows1, err := stmt1.Query(email_to_uid(user, domain))
+        rows1, err := stmt1.Query(email_to_uids(user, domain))
         if err != nil {
                 os.Exit(111)
         }
@@ -710,6 +710,7 @@ func autoresponder_history (user string, domain string, sender string, duration 
 }
 
 func email_to_uid (user string, domain string) (int) {
+	// This is bad code because one email can map to multiple UIDs
 	var uid int = -1
 	debug("Preparing statement in email_to_uid\n")
 	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
@@ -732,6 +733,42 @@ func email_to_uid (user string, domain string) (int) {
         }
 
 	return uid
+}
+
+func email_to_uids (user string, domain string) ([]int) {
+	// This is bad code because one email can map to multiple UIDs
+	var uids []int
+	var rows *sql.Rows
+
+	debug("Preparing statement in email_to_uids\n")
+	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+        if err != nil {
+		fmt.Println(err)
+		os.Exit(111)
+        }
+	debug("Running query in email_to_uids\n")
+	rows, err = stmt1.Query(user, domain)
+
+	// If the first query procudes no result, check for wildcard mapping
+	if err == sql.ErrNoRows {
+		rows, err = stmt1.Query("*", domain)
+	}
+
+	// Iterate over results
+	for rows.Next() {
+		var nextuid int
+		rows.Scan(&nextuid)
+		uids = append(uids, nextuid)
+	}
+
+	// If error is still not nil, we have no mapping and need to defer delivery
+        if err != nil {
+		fmt.Println(err)
+                os.Exit(111)
+        }
+
+	debug(fmt.Sprintf("Returning %d results from email_to_uids: %v", len(uids), uids))
+	return uids
 }
 
 func autoresponder_text (user string, domain string) (string) {
