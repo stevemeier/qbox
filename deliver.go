@@ -473,24 +473,19 @@ func get_destinations (user string, domain string) ([]destination) {
 	var dbhomedir string
 	var dbspamdir string
 
-	debug("Preparing statement in get_destinations\n")
-        stmt1, err := db.Prepare("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid IN (?)")
-        if err != nil {
-		fmt.Println(err)
-		os.Exit(111)
-        }
 	debug("Running query in get_destinations\n")
-//	rows1, err := stmt1.Query(strings.Join(email_to_uids(user, domain), ","))
-//	rows1, err := stmt1.Query(fmt.Sprintf("%v", email_to_uids(user, domain)))
-	rows1, err := stmt1.Query(ints_to_list(email_to_uids(user, domain)))
+
+	// go-mysql-driver can't handle IN, so we go this route
+	rows1, err := db.Query("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid IN ("+ints_to_list(email_to_uids(user, domain))+")")
         if err != nil {
 		fmt.Println(err)
                 os.Exit(111)
         }
-        defer stmt1.Close()
 
+	i := 0
         for rows1.Next() {
-		debug("Scanning row in get_destinations\n")
+		i++
+		debug(fmt.Sprintf("Scanning #%d row in get_destinations\n", i))
                 err := rows1.Scan(&dbhomedir, &dbspamdir)
                 if err != nil {
 			fmt.Println(err)
@@ -772,7 +767,7 @@ func email_to_uids (user string, domain string) ([]int) {
                 os.Exit(111)
         }
 
-	debug(fmt.Sprintf("Returning %d results from email_to_uids: %v", len(uids), uids))
+	debug(fmt.Sprintf("Returning %d results from email_to_uids: %s\n", len(uids), ints_to_list(uids)))
 	return uids
 }
 
