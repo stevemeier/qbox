@@ -741,8 +741,8 @@ func email_to_uids (user string, domain string) ([]int) {
 	var rows *sql.Rows
 
 	debug("Preparing statement in email_to_uids\n")
-//	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
-	stmt1, err := db.Prepare("SELECT DISTINCT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE (user = ? OR user = '*') AND domain = ?")
+	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
+//	stmt1, err := db.Prepare("SELECT DISTINCT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE (user = ? OR user = '*') AND domain = ?")
         if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
@@ -761,6 +761,18 @@ func email_to_uids (user string, domain string) ([]int) {
 		var nextuid int
 		rows.Scan(&nextuid)
 		uids = append(uids, nextuid)
+	}
+
+	if len(uids) == 0 {
+		debug("User search returned no results, trying wildcard\n")
+		stmt2, _ := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = '*' AND domain = ?")
+		rows, _ = stmt2.Query(domain)
+
+		for rows.Next() {
+			var nextuid int
+			rows.Scan(&nextuid)
+			uids = append(uids, nextuid)
+		}
 	}
 
 	// If error is still not nil, we have no mapping and need to defer delivery
