@@ -8,7 +8,6 @@ import "encoding/json"
 import "errors"
 import "fmt"
 import "io"
-import "io/ioutil"
 import "log/syslog"
 import "net"
 import "os"
@@ -379,7 +378,7 @@ func main() {
 
 func read_from_stdin () (string, error) {
         var message []byte
-	message, err := ioutil.ReadAll(os.Stdin)
+	message, err := io.ReadAll(os.Stdin)
 	return string(message), err
 }
 
@@ -418,12 +417,12 @@ func write_to_file (message email, filename string) (bool, error) {
 		// This has never failed so far, but we check anyway
 		objbytes, byteerr := message.Object.Bytes()
 		if byteerr == nil {
-			werr = ioutil.WriteFile(filename, objbytes, 0600)
+			werr = os.WriteFile(filename, objbytes, 0600)
 		} else {
 			werr = byteerr
 		}
 	} else {
-		werr = ioutil.WriteFile(filename, []byte(message.Raw), 0600)
+		werr = os.WriteFile(filename, []byte(message.Raw), 0600)
 	}
 
 	return werr == nil, werr
@@ -853,7 +852,7 @@ func bool_yesno (input bool) (string) {
 }
 
 func file_content (filename string) (string) {
-	buf, err := ioutil.ReadFile(filename)
+	buf, err := os.ReadFile(filename)
 	if err == nil { return string(buf) }
 	return ""
 }
