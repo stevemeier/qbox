@@ -980,5 +980,9 @@ func ints_to_list (ints []int) (string) {
 		s = append(s, strconv.Itoa(i))
 	}
 
-	return strings.Join(s, ",")
+	if len(s) > 0 {
+		return strings.Join(s, ",")
+	}
+
+	return "NULL"
 }
