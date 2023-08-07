@@ -16,13 +16,12 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/mattn/go-sqlite3 v1.14.10
+	github.com/oschwald/geoip2-golang v1.9.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/teamwork/spamc v0.0.0-20200109085853-a4e0c5c3f7a0
 	github.com/teamwork/test v0.0.0-20200108114543-02621bae84ad // indirect
 	github.com/teamwork/utils v0.0.0-20211112162623-194b7eff720f // indirect
 	github.com/valyala/fasthttp v1.44.0
 	golang.org/x/net v0.7.0
-	golang.org/x/sys v0.5.0
-	gopkg.in/yaml.v3 v3.0.0 // indirect
+	golang.org/x/sys v0.9.0
 )

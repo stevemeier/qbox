@@ -11,6 +11,7 @@ import "net/http"
 import "os"
 import "os/exec"
 import "strconv"
+import "strings"
 import "syscall"
 import "time"
 // Debugging
@@ -26,6 +27,9 @@ import _ "github.com/go-sql-driver/mysql"
 import "github.com/hgfischer/go-otp"
 // Getopt
 import "github.com/DavidGamba/go-getoptions"
+// GeoIP
+import "net"
+import "github.com/oschwald/geoip2-golang"
 
 var Version string
 
@@ -53,6 +57,8 @@ type authfaildata struct {
 var authfail = make(map[string][]authfaildata)
 var maxfail int
 var failscript string
+var geodb *geoip2.Reader
+var denyauthfrom []string
 
 type clientreqdata struct {
 	Username	string
@@ -122,6 +128,19 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprintf(w, "{\"error\":\"root logins are prohibited\"}\n")
 		return
+	}
+
+	// Check if country is blocked server-wide
+	if len(denyauthfrom) > 0 {
+		ipcountry := ip_to_iso3166(reqdata.Source)
+		for _, banned := range denyauthfrom {
+			if ipcountry == banned {
+				fmt.Fprintf(os.Stderr, "User %s denied on %s from %s (banned: %s)\n", reqdata.Username, reqdata.Service, reqdata.Source, ipcountry)
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintf(w, "{\"error\":\"Login from this address is prohibited\"}\n")
+				return
+			}
+		}
 	}
 
 	// Check that DB is still there
@@ -303,10 +322,12 @@ func fileExists(filename string) bool {
 func main () {
 	// Option parsing
 	var listenport int
+	var geofile string
 	opt := getoptions.New()
 	opt.IntVar(&listenport, "port", 17520)
 	opt.IntVar(&maxfail, "maxfail", 10)
 	opt.StringVar(&failscript, "failscript", "")
+	opt.StringVar(&geofile, "geodb", "")
 	_, parseerr := opt.Parse(os.Args[1:])
 	if parseerr != nil {
 		fmt.Print(opt.Help())
@@ -351,6 +372,13 @@ func main () {
                 }
         }
 
+	if fileExists(configdir + "/denyauthfrom") {
+                buf, err := ioutil.ReadFile(configdir + "/denyauthfrom")
+                if err == nil {
+                        denyauthfrom = strings.Split(string(buf), "\n")
+                }
+        }
+
 	var err error
         db, err = sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
 	if err == nil {
@@ -360,6 +388,16 @@ func main () {
 			os.Exit(1)
 		}
 		defer db.Close()
+	}
+
+	var geoerr error
+	if len(geofile) > 0 {
+		geodb, geoerr = geoip2.Open(geofile)
+		if geoerr != nil {
+			log.Fatal(geoerr)
+			os.Exit(1)
+		}
+		defer geodb.Close()
 	}
 
 	router := mux.NewRouter().StrictSlash(true)
@@ -422,4 +460,13 @@ func update_lastlogin(uid int64, username string, service string) bool {
 func timestamp() string {
 	const timelayout = "2006-01-02 15:04:05"
 	return time.Unix(time.Now().Unix(), 0).Format(timelayout)
+}
+
+func ip_to_iso3166 (ip string) (string) {
+	record, lookuperr := geodb.City(net.ParseIP(ip))
+	if lookuperr != nil {
+		return ""
+	}
+
+	return record.Country.IsoCode
 }
