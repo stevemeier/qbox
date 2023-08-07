@@ -134,7 +134,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) {
 	if len(denyauthfrom) > 0 {
 		ipcountry := ip_to_iso3166(reqdata.Source)
 		for _, banned := range denyauthfrom {
-			if ipcountry == banned {
+			if strings.EqualFold(ipcountry, banned) {
 				fmt.Fprintf(os.Stderr, "User %s denied on %s from %s (banned: %s)\n", reqdata.Username, reqdata.Service, reqdata.Source, ipcountry)
 				w.WriteHeader(http.StatusForbidden)
 				fmt.Fprintf(w, "{\"error\":\"Login from this address is prohibited\"}\n")
