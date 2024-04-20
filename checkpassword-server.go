@@ -352,7 +352,7 @@ func main () {
         if fileExists(configdir + "/dbserver") {
                 buf, err := ioutil.ReadFile(configdir + "/dbserver")
                 if err == nil {
-                        dbserver = string(buf)
+                        dbserver = chomp(string(buf))
                 }
         }
 
@@ -360,7 +360,7 @@ func main () {
         if fileExists(configdir + "/dbuser") {
                 buf, err := ioutil.ReadFile(configdir + "/dbuser")
                 if err == nil {
-                        dbuser = string(buf)
+                        dbuser = chomp(string(buf))
                 }
         }
 
@@ -368,7 +368,7 @@ func main () {
         if fileExists(configdir + "/dbpass") {
                 buf, err := ioutil.ReadFile(configdir + "/dbpass")
                 if err == nil {
-                        dbpass = string(buf)
+                        dbpass = chomp(string(buf))
                 }
         }
 
@@ -469,4 +469,9 @@ func ip_to_iso3166 (ip string) (string) {
 	}
 
 	return record.Country.IsoCode
+}
+
+func chomp (s string) (string) {
+	// based on Perl's chomp
+	return strings.TrimRight(s, "\n")
 }
