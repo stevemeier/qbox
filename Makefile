@@ -6,7 +6,7 @@ VERSION := $(shell git rev-parse --short HEAD)
 GOLDFLAGS += -X main.Version=$(DATE)_$(VERSION)
 GOFLAGS = -ldflags "$(GOLDFLAGS) -s -w"
 
-all:	asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
+all:	asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist messageid mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 clean:
 	rm asncheck badhelo badrcptto bouncelimit checkpassword-client checkpassword-server chpasswd deliver filterservice greylist messageid mfcheck rblcheck rcpt-verify returnpath rwlcheck sessionid spfcheck trust-log
 asncheck: FORCE
