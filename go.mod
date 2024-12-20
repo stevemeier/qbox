@@ -22,6 +22,6 @@ require (
 	github.com/teamwork/test v0.0.0-20200108114543-02621bae84ad // indirect
 	github.com/teamwork/utils v0.0.0-20211112162623-194b7eff720f // indirect
 	github.com/valyala/fasthttp v1.44.0
-	golang.org/x/net v0.23.0
-	golang.org/x/sys v0.18.0
+	golang.org/x/net v0.33.0
+	golang.org/x/sys v0.28.0
 )
