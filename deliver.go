@@ -513,7 +513,7 @@ func get_destinations(user string, domain string) []destination {
 		homedir = dbhomedir
 
 		// Add `INBOX` suffix and make sure homedir is clean
-		if dbhomedir[0:1] == "/" {
+		if strings.HasPrefix(dbhomedir, "/") {
 			homedir = path.Clean(dbhomedir + "/" + chomp(file_content(configdir+"/inbox")))
 		}
 
