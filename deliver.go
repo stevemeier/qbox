@@ -40,9 +40,12 @@ type email struct {
 	Sha1		string
 	Raw		string		// Message as read from STDIN (unaltered)
 	Object		*jwemail.Email	// currently only used for Autoresponder
-	ObjectOK	bool		// Indicates if mail was parsed successfully by jwemail
 	UseObject	bool		// Use object instead of `Raw`, if true
 	IsSpam		bool
+}
+
+func (m email) hasObject() bool {
+	return m.Object != nil
 }
 
 type report struct {
@@ -54,7 +57,7 @@ type report struct {
 	Results		[]int
 	Features	[]string
 	Exitcode	int
-	ObjectOK	bool
+	ObjectOK	bool		// Indicates if mail was parsed successfully by jwemail
 	UseObject	bool
 	IsSpam		bool
 	OnDisk		int64
@@ -116,10 +119,8 @@ func main() {
 
 	// NewEmailFromReader can fail (e.g. escaping issues)
 	// If it does, we can't use the object
-	// Conveniently, ObjectOK is `false` by default, so we set it to true if the parser does not complain
-	var newmailerr error
-	message.Object, newmailerr = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
-	if newmailerr == nil { message.ObjectOK = true }
+        // 2026-06-16: We now check the object before using it, so this check is no longer needed
+	message.Object, _ = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
 
 	if (len(message.Recipient) == 0) {
 		fmt.Println("RECIPIENT not set!")
@@ -210,9 +211,11 @@ func main() {
 		debug("Running SPAM scan\n")
 		spamresult, spamerr := spamd_scan(&message.Raw)
 		if spamerr == nil {
-			message.Object.Headers.Set("X-Spam-Flag", bool_yesno(spamresult.IsSpam))
-			message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, not_negative(int(spamresult.Score))))
-			message.UseObject = true
+			if message.hasObject() {
+				message.Object.Headers.Set("X-Spam-Flag", bool_yesno(spamresult.IsSpam))
+				message.Object.Headers.Set("X-Spam-Level", strings.Repeat(`*`, not_negative(int(spamresult.Score))))
+				message.UseObject = true
+			}
 			if spamresult.Score >= user_spamlimit(user, domain) {
 				debug(fmt.Sprintf("Spamlimit %f is reached or exceeded by %f\n", user_spamlimit(user, domain), spamresult.Score))
 				message.IsSpam = true
@@ -221,13 +224,15 @@ func main() {
 	}
 
 	// Check for existing Spam markers
-	subjectline := message.Object.Subject
-	// This is used by SpamBarrier
-	spamre1 := regexp.MustCompile(`\*\*\*\*\*SPAM\*\*\*\*\*`)
-	spamre2 := regexp.MustCompile(`\[SPAM\]`)
-	if spamre1.MatchString(subjectline) || spamre2.MatchString(subjectline) {
-		syslog_write(fmt.Sprintf("%s / Message already marked as spam (subject line)", session))
-		message.IsSpam = true
+	if message.hasObject() {
+		subjectline := message.Object.Subject
+		// This is used by SpamBarrier
+		spamre1 := regexp.MustCompile(`\*\*\*\*\*SPAM\*\*\*\*\*`)
+		spamre2 := regexp.MustCompile(`\[SPAM\]`)
+		if spamre1.MatchString(subjectline) || spamre2.MatchString(subjectline) {
+			syslog_write(fmt.Sprintf("%s / Message already marked as spam (subject line)", session))
+			message.IsSpam = true
+		}
 	}
 
 	// Check if virus filter is active for this user
@@ -237,13 +242,19 @@ func main() {
 		avresult, averr := clamd_scan(&message.Raw)
 		if averr == nil {
 			debug("AV result: "+ avresult.Status +"\n")
-			message.Object.Headers.Set("X-Virus-Scanned", "ClamAV")
-			message.UseObject = true
+			if message.hasObject() {
+				message.Object.Headers.Set("X-Virus-Scanned", "ClamAV")
+				message.UseObject = true
+			}
 			if avresult.Status != "OK" {
-				// Virus was found, strip attachments
-				message.Object.Attachments = nil
-				// Add a security note instead
-				message.Object.Attach(strings.NewReader("Attachments have been removed by virus scanner"), "security_notice.txt", "text/plain")
+				if message.hasObject() {
+					// Virus was found, strip attachments
+					message.Object.Attachments = nil
+					// Add a security note instead
+					message.Object.Attach(strings.NewReader("Attachments have been removed by virus scanner"), "security_notice.txt", "text/plain")
+				} else {
+					syslog_write(fmt.Sprintf("%s / Virus found, but message could not be parsed; leaving message unmodified", session))
+				}
 			}
 		}
 	}
@@ -316,6 +327,7 @@ func main() {
 	if feature_enabled(user, domain, "autoresponder") &&
 	   !noreply.MatchString(sender) &&
 	   sender != "" &&
+	   message.hasObject() &&
 	   message.Object.Headers.Get("List-ID") == "" &&
 	   message.Object.Headers.Get("X-Mailer") != "" {
 		if autoresponder_history(user, domain, sender, 604800) {
@@ -361,7 +373,7 @@ func main() {
 	dreport.Exitcode = exitcode
 	dreport.ProcessingTime = time.Duration(time.Since(start)).Seconds()
 	dreport.UseObject = message.UseObject
-	dreport.ObjectOK = message.ObjectOK
+	dreport.ObjectOK = message.hasObject()
 	dreport.IsSpam = message.IsSpam
 
 	// Put delivery report into JSON
@@ -413,7 +425,7 @@ func write_to_file (message email, filename string) (bool, error) {
 
 	debug("Writing to "+filename+"\n")
 	var werr error
-	if message.UseObject && message.ObjectOK {
+	if message.UseObject && message.hasObject() {
 		// This has never failed so far, but we check anyway
 		objbytes, byteerr := message.Object.Bytes()
 		if byteerr == nil {
