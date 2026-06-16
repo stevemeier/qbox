@@ -330,10 +330,10 @@ func main() {
 	   message.hasObject() &&
 	   message.Object.Headers.Get("List-ID") == "" &&
 	   message.Object.Headers.Get("X-Mailer") != "" {
-		if autoresponder_history(user, domain, sender, 604800) {
+		if !autoresponder_history(user, domain, sender, 604800) {
 			ar := jwemail.NewEmail()
 			ar.From = "<"+message.Recipient+">"
-			ar.To[0] = "<"+sender+">"
+			ar.To = []string{"<"+sender+">"}
 			if message.Object.Headers.Get("Subject") == "" {
 				ar.Subject = "Autoresponder reply\n"
 			} else {
