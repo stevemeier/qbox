@@ -28,20 +28,22 @@ import "github.com/baruwa-enterprise/clamd"
 import "github.com/teamwork/spamc"
 
 var Version string
+
 const configdir = "/etc/qbox"
+
 var debug_enabled bool = false
 
 // Make DB available globally, not just in main
 var db *sql.DB
 
 type email struct {
-	Length		int
-	Recipient	string
-	Sha1		string
-	Raw		string		// Message as read from STDIN (unaltered)
-	Object		*jwemail.Email	// currently only used for Autoresponder
-	UseObject	bool		// Use object instead of `Raw`, if true
-	IsSpam		bool
+	Length    int
+	Recipient string
+	Sha1      string
+	Raw       string         // Message as read from STDIN (unaltered)
+	Object    *jwemail.Email // currently only used for Autoresponder
+	UseObject bool           // Use object instead of `Raw`, if true
+	IsSpam    bool
 }
 
 func (m email) hasObject() bool {
@@ -49,23 +51,23 @@ func (m email) hasObject() bool {
 }
 
 type report struct {
-	Sender		string
-	Recipient	string
-	Size		int
-	ProcessingTime	float64
-	Destinations	[]destination
-	Results		[]int
-	Features	[]string
-	Exitcode	int
-	ObjectOK	bool		// Indicates if mail was parsed successfully by jwemail
-	UseObject	bool
-	IsSpam		bool
-	OnDisk		int64
+	Sender         string
+	Recipient      string
+	Size           int
+	ProcessingTime float64
+	Destinations   []destination
+	Results        []int
+	Features       []string
+	Exitcode       int
+	ObjectOK       bool // Indicates if mail was parsed successfully by jwemail
+	UseObject      bool
+	IsSpam         bool
+	OnDisk         int64
 }
 
 type destination struct {
-	Default		string
-	Spam		string
+	Default string
+	Spam    string
 }
 
 func main() {
@@ -114,15 +116,15 @@ func main() {
 	syslog_write(fmt.Sprintf("%s / Read %d bytes from STDIN", session, len(message.Raw)))
 
 	message.Length = len(message.Raw)
-	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), chomp(file_content(configdir + "/prefix")))
+	message.Recipient = strings.TrimPrefix(os.Getenv("RECIPIENT"), chomp(file_content(configdir+"/prefix")))
 	message.Sha1 = sha1sum(message.Raw)
 
 	// NewEmailFromReader can fail (e.g. escaping issues)
 	// If it does, we can't use the object
-        // 2026-06-16: We now check the object before using it, so this check is no longer needed
+	// 2026-06-16: We now check the object before using it, so this check is no longer needed
 	message.Object, _ = jwemail.NewEmailFromReader(strings.NewReader(message.Raw))
 
-	if (len(message.Recipient) == 0) {
+	if len(message.Recipient) == 0 {
 		fmt.Println("RECIPIENT not set!")
 		os.Exit(1)
 	}
@@ -130,11 +132,11 @@ func main() {
 	syslog_write(fmt.Sprintf("%s / Recipient is <%s>", session, message.Recipient))
 
 	addrparts := strings.Split(message.Recipient, "@")
-        if len(addrparts) < 2 {
+	if len(addrparts) < 2 {
 		fmt.Println("ERROR: Could not split recipient address")
-                os.Exit(111)
-        }
-        user, domain := addrparts[0], addrparts[1]
+		os.Exit(111)
+	}
+	user, domain := addrparts[0], addrparts[1]
 
 	// Read the `sender` from the environment
 	var sender string
@@ -144,49 +146,49 @@ func main() {
 
 	syslog_write(fmt.Sprintf("%s / Sender is <%s>", session, sender))
 
-        // Read config files
-        var dbserver string = "127.0.0.1"
-        if file_exists(configdir + "/dbserver") {
+	// Read config files
+	var dbserver string = "127.0.0.1"
+	if file_exists(configdir + "/dbserver") {
 		dbserver = file_content(configdir + "/dbserver")
-        }
+	}
 
-        var dbuser string = "qbox"
-        if file_exists(configdir + "/dbuser") {
+	var dbuser string = "qbox"
+	if file_exists(configdir + "/dbuser") {
 		dbuser = file_content(configdir + "/dbuser")
-        }
+	}
 
-        var dbpass string
-        if file_exists(configdir + "/dbpass") {
+	var dbpass string
+	if file_exists(configdir + "/dbpass") {
 		dbpass = file_content(configdir + "/dbpass")
-        }
+	}
 
-        // Initialize DB
-        db, err = sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
-        if err == nil {
-                err = db.Ping()
-                if err != nil {
-			fmt.Println("ERROR: MySQL db.Ping failed! ["+err.Error()+"]")
-                        os.Exit(exitcode)
-                }
-        } else {
-		fmt.Println("ERROR: Could not connect to MySQL ["+err.Error()+"]")
-                os.Exit(exitcode)
-        }
-        defer db.Close()
+	// Initialize DB
+	db, err = sql.Open("mysql", dbuser+":"+dbpass+"@tcp("+dbserver+")/qbox")
+	if err == nil {
+		err = db.Ping()
+		if err != nil {
+			fmt.Println("ERROR: MySQL db.Ping failed! [" + err.Error() + "]")
+			os.Exit(exitcode)
+		}
+	} else {
+		fmt.Println("ERROR: Could not connect to MySQL [" + err.Error() + "]")
+		os.Exit(exitcode)
+	}
+	defer db.Close()
 
 	// Check for domain rewrite
-	debug("Calling rewrite_domain with parameter: "+domain+"\n")
+	debug("Calling rewrite_domain with parameter: " + domain + "\n")
 	domain = rewrite_domain(domain)
 
 	// Remove extension
-	debug("Removing extension: "+user+" -> "+remove_extension(user)+"\n")
+	debug("Removing extension: " + user + " -> " + remove_extension(user) + "\n")
 	user = remove_extension(user)
 
 	// Get destinations
-	debug("Calling get_destinations with parameters: "+user+", "+domain+"\n")
+	debug("Calling get_destinations with parameters: " + user + ", " + domain + "\n")
 	destinations = get_destinations(user, domain)
 	if debug_enabled {
-		debug("Destinations: "+list_destinations(destinations)+"\n")
+		debug("Destinations: " + list_destinations(destinations) + "\n")
 	}
 
 	// Check wildcard
@@ -198,7 +200,7 @@ func main() {
 
 	// Check if we have at least one destination
 	if len(destinations) == 0 {
-		fmt.Println("Could not find mapping for "+message.Recipient)
+		fmt.Println("Could not find mapping for " + message.Recipient)
 		os.Exit(100)
 	}
 
@@ -241,7 +243,7 @@ func main() {
 		debug("Running AV scan\n")
 		avresult, averr := clamd_scan(&message.Raw)
 		if averr == nil {
-			debug("AV result: "+ avresult.Status +"\n")
+			debug("AV result: " + avresult.Status + "\n")
 			if message.hasObject() {
 				message.Object.Headers.Set("X-Virus-Scanned", "ClamAV")
 				message.UseObject = true
@@ -262,9 +264,11 @@ func main() {
 	for _, dst := range destinations {
 		var destination string
 		destination = dst.Default
-		if message.IsSpam { destination = dst.Spam }
+		if message.IsSpam {
+			destination = dst.Spam
+		}
 
-		debug("Starting delivery to "+destination+"\n")
+		debug("Starting delivery to " + destination + "\n")
 		syslog_write(fmt.Sprintf("%s / Delivering to %s", session, destination))
 		switch destination_type(destination) {
 		case "maildir":
@@ -275,47 +279,49 @@ func main() {
 			}
 
 			dupfilter := feature_enabled(user, domain, "dupfilter")
-			if dupfilter { dreport.Features = append(dreport.Features, "dupfilter") }
+			if dupfilter {
+				dreport.Features = append(dreport.Features, "dupfilter")
+			}
 			if dupfilter && is_duplicate(destination, message.Sha1) {
-				fmt.Println("Message to "+destination+" for "+message.Recipient+" was a duplicate ("+message.Sha1+")")
+				fmt.Println("Message to " + destination + " for " + message.Recipient + " was a duplicate (" + message.Sha1 + ")")
 				deliveryresults = append(deliveryresults, 0)
 			} else {
 				writesuccess, err, ondisk := write_to_maildir(message, destination)
 				dreport.OnDisk = ondisk
-				if writesuccess  {
-					fmt.Println("Message delivered to "+destination+" for "+message.Recipient)
+				if writesuccess {
+					fmt.Println("Message delivered to " + destination + " for " + message.Recipient)
 					deliveryresults = append(deliveryresults, 0)
 				} else {
-					fmt.Println("ERROR: Could not deliver to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
+					fmt.Println("ERROR: Could not deliver to " + destination + " for " + message.Recipient + " [" + err.Error() + "]")
 					deliveryresults = append(deliveryresults, 1)
 				}
 			}
 
 		case "forward":
-			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-f"+forward_sender(), destination}, []byte(message.Raw))
+			_, fwdsuccess, err := sysexec("/var/qmail/bin/qmail-inject", []string{"-f" + forward_sender(), destination}, []byte(message.Raw))
 			if fwdsuccess == 0 {
-				fmt.Println("Message forwarded to "+destination+" for "+message.Recipient)
+				fmt.Println("Message forwarded to " + destination + " for " + message.Recipient)
 			} else {
-				fmt.Println("ERROR: Could not forward to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
+				fmt.Println("ERROR: Could not forward to " + destination + " for " + message.Recipient + " [" + err.Error() + "]")
 			}
 			deliveryresults = append(deliveryresults, fwdsuccess)
 
 		case "pipe":
-			destination = strings.TrimPrefix(destination,`|`)
+			destination = strings.TrimPrefix(destination, `|`)
 			_, execsuccess, err := sysexec(destination, nil, []byte(message.Raw))
 			if execsuccess == 0 {
-				fmt.Println("Message piped to "+destination+" for "+message.Recipient)
+				fmt.Println("Message piped to " + destination + " for " + message.Recipient)
 			} else {
-				fmt.Println("ERROR: Pipe failed to "+destination+" for "+message.Recipient+" ["+err.Error()+"]")
+				fmt.Println("ERROR: Pipe failed to " + destination + " for " + message.Recipient + " [" + err.Error() + "]")
 			}
 			deliveryresults = append(deliveryresults, execsuccess)
 
 		case "":
-			fmt.Println("Homedir is not defined for "+message.Recipient)
-                        deliveryresults = append(deliveryresults, 111)
+			fmt.Println("Homedir is not defined for " + message.Recipient)
+			deliveryresults = append(deliveryresults, 111)
 
 		default:
-			fmt.Println("Can not handle "+destination+" for "+message.Recipient)
+			fmt.Println("Can not handle " + destination + " for " + message.Recipient)
 			deliveryresults = append(deliveryresults, 111)
 		}
 	}
@@ -325,28 +331,28 @@ func main() {
 	// If there is no X-Mailer Header, it's likely automated, so no response either
 	noreply := regexp.MustCompile(`^noreply`)
 	if feature_enabled(user, domain, "autoresponder") &&
-	   !noreply.MatchString(sender) &&
-	   sender != "" &&
-	   message.hasObject() &&
-	   message.Object.Headers.Get("List-ID") == "" &&
-	   message.Object.Headers.Get("X-Mailer") != "" {
+		!noreply.MatchString(sender) &&
+		sender != "" &&
+		message.hasObject() &&
+		message.Object.Headers.Get("List-ID") == "" &&
+		message.Object.Headers.Get("X-Mailer") != "" {
 		if !autoresponder_history(user, domain, sender, 604800) {
 			ar := jwemail.NewEmail()
-			ar.From = "<"+message.Recipient+">"
-			ar.To = []string{"<"+sender+">"}
+			ar.From = "<" + message.Recipient + ">"
+			ar.To = []string{"<" + sender + ">"}
 			if message.Object.Headers.Get("Subject") == "" {
 				ar.Subject = "Autoresponder reply\n"
 			} else {
-				ar.Subject = "Auto: "+message.Object.Headers.Get("Subject")
+				ar.Subject = "Auto: " + message.Object.Headers.Get("Subject")
 			}
 			ar.Text = []byte(autoresponder_text(user, domain))
 
 			arbytes, _ := ar.Bytes()
 			_, arsuccess, _ := sysexec("/var/qmail/bin/qmail-inject",
-						   []string{"-f"+message.Recipient, sender},
-						   arbytes)
+				[]string{"-f" + message.Recipient, sender},
+				arbytes)
 			if arsuccess == 0 {
-				record_autoresponse(email_to_uid(user,domain), sender)
+				record_autoresponse(email_to_uid(user, domain), sender)
 			}
 		}
 	}
@@ -388,25 +394,25 @@ func main() {
 	os.Exit(exitcode)
 }
 
-func read_from_stdin () (string, error) {
-        var message []byte
+func read_from_stdin() (string, error) {
+	var message []byte
 	message, err := io.ReadAll(os.Stdin)
 	return string(message), err
 }
 
-func sha1sum (message string) (string) {
+func sha1sum(message string) string {
 	hash := sha1.New()
 	_, _ = io.WriteString(hash, message)
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func epoch () (string) {
+func epoch() string {
 	now := time.Now()
 	// Using UnixNano instead of just Unix gives us greater entropy in the filename
 	return strconv.FormatInt(now.UnixNano(), 10)
 }
 
-func write_to_file (message email, filename string) (bool, error) {
+func write_to_file(message email, filename string) (bool, error) {
 	debug("START write_to_file\n")
 	unix.Umask(077)
 
@@ -423,7 +429,7 @@ func write_to_file (message email, filename string) (bool, error) {
 		return false, errors.New("Not an absolute path")
 	}
 
-	debug("Writing to "+filename+"\n")
+	debug("Writing to " + filename + "\n")
 	var werr error
 	if message.UseObject && message.hasObject() {
 		// This has never failed so far, but we check anyway
@@ -440,35 +446,35 @@ func write_to_file (message email, filename string) (bool, error) {
 	return werr == nil, werr
 }
 
-func file_exists (filename string) (bool) {
-	debug("START file_exists: "+filename+"\n")
-        _, err := os.Stat(filename)
+func file_exists(filename string) bool {
+	debug("START file_exists: " + filename + "\n")
+	_, err := os.Stat(filename)
 	return !os.IsNotExist(err)
 }
 
-func rewrite_domain (domain string) string {
-        // Query DB for domain rewrite
-        var rewrite sql.NullString
-        stmt1, err := db.Prepare("SELECT rewrite FROM domains WHERE domain = ? AND rewrite != ''")
-        if err != nil {
+func rewrite_domain(domain string) string {
+	// Query DB for domain rewrite
+	var rewrite sql.NullString
+	stmt1, err := db.Prepare("SELECT rewrite FROM domains WHERE domain = ? AND rewrite != ''")
+	if err != nil {
 		debug("Failed to prepare statement in rewrite_domain")
 		os.Exit(111)
-        }
+	}
 
-        rows1, err := stmt1.Query(domain)
-        if err != nil {
+	rows1, err := stmt1.Query(domain)
+	if err != nil {
 		debug("Failed to execute query in rewrite_domain")
-                os.Exit(111)
-        }
-        defer stmt1.Close()
+		os.Exit(111)
+	}
+	defer stmt1.Close()
 
-        for rows1.Next() {
-                err := rows1.Scan(&rewrite)
-                if err != nil {
-			debug("Failed to scan row in rewrite_domain "+err.Error())
-                        os.Exit(111)
-                }
-        }
+	for rows1.Next() {
+		err := rows1.Scan(&rewrite)
+		if err != nil {
+			debug("Failed to scan row in rewrite_domain " + err.Error())
+			os.Exit(111)
+		}
+	}
 
 	// See https://stackoverflow.com/questions/40092155/difference-between-string-and-sql-nullstring
 	if rewrite.Valid {
@@ -477,7 +483,7 @@ func rewrite_domain (domain string) string {
 	return domain
 }
 
-func get_destinations (user string, domain string) ([]destination) {
+func get_destinations(user string, domain string) []destination {
 	var result []destination
 	var homedir string
 	var spamdir string
@@ -487,28 +493,28 @@ func get_destinations (user string, domain string) ([]destination) {
 	debug("Running query in get_destinations\n")
 
 	// go-mysql-driver can't handle IN, so we go this route
-	rows1, err := db.Query("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid IN ("+ints_to_list(email_to_uids(user, domain))+")")
-        if err != nil {
+	rows1, err := db.Query("SELECT DISTINCT COALESCE(homedir,''), COALESCE(spamdir,'') FROM passwd WHERE uid IN (" + ints_to_list(email_to_uids(user, domain)) + ")")
+	if err != nil {
 		fmt.Println(err)
-                os.Exit(111)
-        }
+		os.Exit(111)
+	}
 
 	i := 0
-        for rows1.Next() {
+	for rows1.Next() {
 		i++
 		debug(fmt.Sprintf("Scanning #%d row in get_destinations\n", i))
-                err := rows1.Scan(&dbhomedir, &dbspamdir)
-                if err != nil {
+		err := rows1.Scan(&dbhomedir, &dbspamdir)
+		if err != nil {
 			fmt.Println(err)
-                        os.Exit(111)
-                }
+			os.Exit(111)
+		}
 
 		// By default we take the DB's homedir as-is
 		homedir = dbhomedir
 
 		// Add `INBOX` suffix and make sure homedir is clean
 		if dbhomedir[0:1] == "/" {
-			homedir = path.Clean(dbhomedir + "/" + chomp(file_content(configdir + "/inbox")))
+			homedir = path.Clean(dbhomedir + "/" + chomp(file_content(configdir+"/inbox")))
 		}
 
 		// If `spamdir` is empty, we use `homedir` instead
@@ -520,36 +526,36 @@ func get_destinations (user string, domain string) ([]destination) {
 		}
 
 		result = append(result, destination{homedir, spamdir})
-        }
+	}
 
 	debug("Reached end of get_destinations\n")
 	return result
 }
 
-func feature_enabled (user string, domain string, feature string) (bool) {
+func feature_enabled(user string, domain string, feature string) bool {
 	// Currently supported:
 	// `antispam`
 	// `antivir`
 	// `autoresponder`
 	// `dupfilter`
 	var count int
-	debug("Preparing statement in feature_enabled ["+feature+"]\n")
-	stmt1, err := db.Prepare("SELECT COUNT("+feature+") FROM passwd WHERE uid = ? AND "+feature+" > 0")
-        if err != nil {
-		debug("ERROR: Failed to prepare feature query ["+err.Error()+"]")
+	debug("Preparing statement in feature_enabled [" + feature + "]\n")
+	stmt1, err := db.Prepare("SELECT COUNT(" + feature + ") FROM passwd WHERE uid = ? AND " + feature + " > 0")
+	if err != nil {
+		debug("ERROR: Failed to prepare feature query [" + err.Error() + "]")
 		return false
-        }
-	debug("Running query in feature_enabled ["+feature+"]\n")
+	}
+	debug("Running query in feature_enabled [" + feature + "]\n")
 	err = stmt1.QueryRow(email_to_uid(user, domain)).Scan(&count)
-        if err != nil {
-		debug("ERROR: Failed to get features from DB ["+err.Error()+"]")
+	if err != nil {
+		debug("ERROR: Failed to get features from DB [" + err.Error() + "]")
 		return false
-        }
+	}
 
 	return count > 0
 }
 
-func sysexec (command string, args []string, input []byte) ([]byte, int, error) {
+func sysexec(command string, args []string, input []byte) ([]byte, int, error) {
 	var output bytes.Buffer
 
 	if !file_exists(command) {
@@ -573,15 +579,15 @@ func sysexec (command string, args []string, input []byte) ([]byte, int, error) 
 	return output.Bytes(), exitcode, err
 }
 
-func directory_filelist_recursive (directory string) ([]string, error) {
+func directory_filelist_recursive(directory string) ([]string, error) {
 	re := regexp.MustCompile("permission denied")
 	var filelist []string = []string{}
 
-	debug("Indexing "+directory+" in directory_filelist_recursive\n")
+	debug("Indexing " + directory + " in directory_filelist_recursive\n")
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		// We ignore "permission denied" errors"
 		if err != nil && !re.MatchString(err.Error()) {
-			debug("ERROR: Walk encountered an error ["+err.Error()+"]")
+			debug("ERROR: Walk encountered an error [" + err.Error() + "]")
 			return err
 		}
 
@@ -604,8 +610,8 @@ func directory_filelist_recursive (directory string) ([]string, error) {
 	return filelist, nil
 }
 
-func is_duplicate (directory string, hash string) (bool) {
-	debug("Getting file list for "+directory+" in is_duplicate\n")
+func is_duplicate(directory string, hash string) bool {
+	debug("Getting file list for " + directory + " in is_duplicate\n")
 	filelist, err := directory_filelist_recursive(directory)
 	if err != nil {
 		return false
@@ -621,28 +627,23 @@ func is_duplicate (directory string, hash string) (bool) {
 	return false
 }
 
-func destination_type (destination string) (string) {
-	var matched bool
-
-	matched, _ = regexp.MatchString(`^/`, destination)
-	if matched {
+func destination_type(destination string) string {
+	if strings.HasPrefix(destination, "/") {
 		return "maildir"
 	}
 
-	matched, _ = regexp.MatchString(`@`, destination)
-	if matched {
+	if strings.Contains(destination, "@") {
 		return "forward"
 	}
 
-	matched, _ = regexp.MatchString(`^|`, destination)
-	if matched {
+	if strings.HasPrefix(destination, "|") {
 		return "pipe"
 	}
 
 	return ""
 }
 
-func write_to_maildir (message email, directory string) (bool, error, int64) {
+func write_to_maildir(message email, directory string) (bool, error, int64) {
 	// If homedir is set to /dev/null, silently discard the message
 	if strings.HasPrefix(directory, "/dev/null") {
 		return true, nil, -1
@@ -657,15 +658,15 @@ func write_to_maildir (message email, directory string) (bool, error, int64) {
 	}
 	// Example filename:
 	// 1576429450084839306.27056.bart.lordy.de.7a3e892ba01ce9899d101745da2757a81ac55779
-	filename := epoch()+`.`+strconv.Itoa(os.Getpid())+`.`+sys_hostname()+`.`+message.Sha1
-	debug("Designated filename is "+filename+"\n")
+	filename := epoch() + `.` + strconv.Itoa(os.Getpid()) + `.` + sys_hostname() + `.` + message.Sha1
+	debug("Designated filename is " + filename + "\n")
 	writesuccess, err := write_to_file(message, directory+"/tmp/"+filename)
-	ondisk := filesize(directory+"/tmp/"+filename)
+	ondisk := filesize(directory + "/tmp/" + filename)
 
 	if writesuccess {
 		linkerr := os.Link(directory+"/tmp/"+filename, directory+"/new/"+filename)
 		if linkerr == nil {
-			rmerr := os.Remove(directory+"/tmp/"+filename)
+			rmerr := os.Remove(directory + "/tmp/" + filename)
 			if rmerr == nil {
 				return true, nil, ondisk
 			} else {
@@ -679,7 +680,7 @@ func write_to_maildir (message email, directory string) (bool, error, int64) {
 	return false, err, ondisk
 }
 
-func sys_hostname () (string) {
+func sys_hostname() string {
 	hostname, _ := os.Hostname()
 
 	if len(hostname) > 0 {
@@ -689,7 +690,7 @@ func sys_hostname () (string) {
 	return "localhost"
 }
 
-func debug (message string) (bool) {
+func debug(message string) bool {
 	if debug_enabled {
 		fmt.Fprintf(os.Stderr, "DEBUG: "+message)
 		return true
@@ -697,38 +698,38 @@ func debug (message string) (bool) {
 	return false
 }
 
-func env_defined (key string) (bool) {
+func env_defined(key string) bool {
 	_, exists := os.LookupEnv(key)
 	return exists
 }
 
-func autoresponder_history (user string, domain string, sender string, duration int) (bool) {
+func autoresponder_history(user string, domain string, sender string, duration int) bool {
 	var count int
 	debug("Preparing statement in autoresponder_history\n")
-	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = ? AND rcpt = ? AND time > (UNIX_TIMESTAMP() - "+strconv.Itoa(duration)+")")
-        if err != nil {
+	stmt1, err := db.Prepare("SELECT COUNT(*) FROM responses WHERE uid = ? AND rcpt = ? AND time > (UNIX_TIMESTAMP() - " + strconv.Itoa(duration) + ")")
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
-        }
+	}
 	debug("Running query in autoresponder_history\n")
 	err = stmt1.QueryRow(email_to_uid(user, domain), sender).Scan(&count)
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
-                os.Exit(111)
-        }
+		os.Exit(111)
+	}
 
 	return count > 0
 }
 
-func email_to_uid (user string, domain string) (int) {
+func email_to_uid(user string, domain string) int {
 	// This is bad code because one email can map to multiple UIDs
 	var uid int = -1
 	debug("Preparing statement in email_to_uid\n")
 	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
-        }
+	}
 	debug("Running query in email_to_uid\n")
 	err = stmt1.QueryRow(user, domain).Scan(&uid)
 
@@ -738,34 +739,34 @@ func email_to_uid (user string, domain string) (int) {
 	}
 
 	// If error is still not nil, we have no mapping and need to defer delivery
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
-                os.Exit(111)
-        }
+		os.Exit(111)
+	}
 
 	return uid
 }
 
-func email_to_uids (user string, domain string) ([]int) {
+func email_to_uids(user string, domain string) []int {
 	// This is bad code because one email can map to multiple UIDs
 	var uids []int
 	var rows *sql.Rows
 
 	debug("Preparing statement in email_to_uids\n")
 	stmt1, err := db.Prepare("SELECT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE user = ? AND domain = ?")
-//	stmt1, err := db.Prepare("SELECT DISTINCT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE (user = ? OR user = '*') AND domain = ?")
-        if err != nil {
+	//	stmt1, err := db.Prepare("SELECT DISTINCT passwd.uid FROM passwd INNER JOIN mapping ON passwd.uid = mapping.uid WHERE (user = ? OR user = '*') AND domain = ?")
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
-        }
+	}
 	debug("Running query in email_to_uids\n")
 	rows, err = stmt1.Query(user, domain)
 
 	// If the first query procudes no result, check for wildcard mapping
 	// This only works for QueryRow(), not Query()
-//	if err == sql.ErrNoRows {
-//		rows, err = stmt1.Query("*", domain)
-//	}
+	//	if err == sql.ErrNoRows {
+	//		rows, err = stmt1.Query("*", domain)
+	//	}
 
 	// Iterate over results
 	for rows.Next() {
@@ -787,106 +788,116 @@ func email_to_uids (user string, domain string) ([]int) {
 	}
 
 	// If error is still not nil, we have no mapping and need to defer delivery
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
-                os.Exit(111)
-        }
+		os.Exit(111)
+	}
 
 	debug(fmt.Sprintf("Returning %d results from email_to_uids: %s\n", len(uids), ints_to_list(uids)))
 	return uids
 }
 
-func autoresponder_text (user string, domain string) (string) {
+func autoresponder_text(user string, domain string) string {
 	var artext string
 	debug("Preparing statement in autresponder_text\n")
 	stmt1, err := db.Prepare("SELECT artext FROM passwd WHERE uid = ?")
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(111)
-        }
+	}
 	debug("Running query in autresponder_text\n")
 	err = stmt1.QueryRow(email_to_uid(user, domain)).Scan(&artext)
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
-                os.Exit(111)
-        }
+		os.Exit(111)
+	}
 
 	return artext
 }
 
-func record_autoresponse (from int, to string) (bool) {
+func record_autoresponse(from int, to string) bool {
 	debug("Preparing statement in record_autoresponse\n")
 	stmt1, err := db.Prepare("INSERT INTO responses VALUES ('', ?, ?, UNIX_TIMESTAMP() )")
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
 		return false
-        }
+	}
 	debug("Running query in record_autoresponse\n")
 	_, err = stmt1.Exec(from, to)
 
 	return err == nil
 }
 
-func array_sum (input []int) (int) {
-        var sum int
-        for _, i := range input {
-                sum += i
-        }
+func array_sum(input []int) int {
+	var sum int
+	for _, i := range input {
+		sum += i
+	}
 
-        return sum
+	return sum
 }
 
-func is_directory (path string) (bool) {
+func is_directory(path string) bool {
 	fileInfo, err := os.Stat(path)
-	if err != nil { return false }
+	if err != nil {
+		return false
+	}
 	return fileInfo.IsDir()
 }
 
-func is_executable (file string) (bool) {
-        stat, err := os.Stat(file)
-        if err != nil {
-                return false
-        }
+func is_executable(file string) bool {
+	stat, err := os.Stat(file)
+	if err != nil {
+		return false
+	}
 
-        // These calls return uint32 by default while
-        // os.Get?id returns int. So we have to change one
-        fileuid := int(stat.Sys().(*syscall.Stat_t).Uid)
-        filegid := int(stat.Sys().(*syscall.Stat_t).Gid)
+	// These calls return uint32 by default while
+	// os.Get?id returns int. So we have to change one
+	fileuid := int(stat.Sys().(*syscall.Stat_t).Uid)
+	filegid := int(stat.Sys().(*syscall.Stat_t).Gid)
 
-        if (os.Getuid() == fileuid) { return stat.Mode()&0100 != 0 }
-        if (os.Getgid() == filegid) { return stat.Mode()&0010 != 0 }
-        return stat.Mode()&0001 != 0
+	if os.Getuid() == fileuid {
+		return stat.Mode()&0100 != 0
+	}
+	if os.Getgid() == filegid {
+		return stat.Mode()&0010 != 0
+	}
+	return stat.Mode()&0001 != 0
 }
 
-func bool_yesno (input bool) (string) {
-	if input { return "Yes" }
+func bool_yesno(input bool) string {
+	if input {
+		return "Yes"
+	}
 	return "No"
 }
 
-func file_content (filename string) (string) {
+func file_content(filename string) string {
 	buf, err := os.ReadFile(filename)
-	if err == nil { return string(buf) }
+	if err == nil {
+		return string(buf)
+	}
 	return ""
 }
 
-func spamd_scan (input *string) (*spamc.ResponseCheck, error) {
+func spamd_scan(input *string) (*spamc.ResponseCheck, error) {
 	var spamd_url string = "127.0.0.1:783"
 	// read config file
-	if file_exists(configdir+"/spamd") {
-		spamd_url = file_content(configdir+"/spamd")
+	if file_exists(configdir + "/spamd") {
+		spamd_url = file_content(configdir + "/spamd")
 	}
 	// initialize client
-	spamc := spamc.New(spamd_url, &net.Dialer{ Timeout: 2 * time.Second })
+	spamc := spamc.New(spamd_url, &net.Dialer{Timeout: 2 * time.Second})
 	// do scan
 	check, err := spamc.Check(context.Background(), strings.NewReader(*input), nil)
 	return check, err
 }
 
-func clamd_scan (input *string) (*clamd.Response, error) {
+func clamd_scan(input *string) (*clamd.Response, error) {
 	var clamd_url string = "127.0.0.1:3310"
 	// read config file
-	if file_exists(configdir+"/clamd") {
-		clamd_url = file_content(configdir+"/clamd")
+	if file_exists(configdir + "/clamd") {
+		clamd_url = file_content(configdir + "/clamd")
 	}
 	// initialize client
 	clamc, _ := clamd.NewClient("tcp", clamd_url)
@@ -899,30 +910,32 @@ func clamd_scan (input *string) (*clamd.Response, error) {
 	}
 }
 
-func directory_is_writable (directory string) (bool) {
+func directory_is_writable(directory string) bool {
 	return unix.Access(directory, unix.W_OK) == nil
 }
 
-func forward_sender () (string) {
+func forward_sender() string {
 	var result string
-	if file_exists(configdir+"/forward_sender") {
-		result = file_content(configdir+"/forward_sender")
+	if file_exists(configdir + "/forward_sender") {
+		result = file_content(configdir + "/forward_sender")
 		return chomp(result)
 	}
 
-	return "postmaster@"+sys_hostname()
+	return "postmaster@" + sys_hostname()
 }
 
-func chomp (s string) (string) {
+func chomp(s string) string {
 	return strings.TrimRight(s, "\n")
 }
 
-func not_negative (i int) (int) {
-	if i < 0 { return 0 }
+func not_negative(i int) int {
+	if i < 0 {
+		return 0
+	}
 	return i
 }
 
-func remove_extension (s string) (string) {
+func remove_extension(s string) string {
 	// https://stackoverflow.com/a/29581738
 	if idx := strings.Index(s, "+"); idx != -1 {
 		return s[:idx]
@@ -930,7 +943,7 @@ func remove_extension (s string) (string) {
 	return s
 }
 
-func list_destinations (dst []destination) (string) {
+func list_destinations(dst []destination) string {
 	var pairs []string
 
 	for _, item := range dst {
@@ -940,30 +953,32 @@ func list_destinations (dst []destination) (string) {
 	return strings.Join(pairs[:], ",")
 }
 
-func is_valid_maildir (dir string) (bool) {
-	return	directory_is_writable(dir+"/cur") &&
+func is_valid_maildir(dir string) bool {
+	return directory_is_writable(dir+"/cur") &&
 		directory_is_writable(dir+"/new") &&
 		directory_is_writable(dir+"/tmp")
 }
 
-func user_spamlimit (user string, domain string) (float64) {
+func user_spamlimit(user string, domain string) float64 {
 	var spamlimit float64
 
 	debug("Preparing statement in user_spamlimit\n")
 	stmt1, err := db.Prepare("SELECT COALESCE(spamlimit,0) FROM passwd WHERE uid = ?")
-        if err != nil {
+	if err != nil {
 		fmt.Println(err)
 		return 0
-        }
+	}
 
 	debug("Running query in user_spamlimit\n")
-	err = stmt1.QueryRow(email_to_uid(user,domain)).Scan(&spamlimit)
+	err = stmt1.QueryRow(email_to_uid(user, domain)).Scan(&spamlimit)
 
-	if err != nil { return 100 }
+	if err != nil {
+		return 100
+	}
 	return spamlimit
 }
 
-func filesize (filename string) (int64) {
+func filesize(filename string) int64 {
 	fi, err := os.Stat(filename)
 	if err != nil {
 		return -1
@@ -972,7 +987,7 @@ func filesize (filename string) (int64) {
 	return fi.Size()
 }
 
-func syslog_write (message string) (error) {
+func syslog_write(message string) error {
 	// If run in debug mode, we write to STDERR, not syslog
 	if debug_enabled {
 		fmt.Fprint(os.Stderr, message)
@@ -985,7 +1000,7 @@ func syslog_write (message string) (error) {
 	}
 }
 
-func ints_to_list (ints []int) (string) {
+func ints_to_list(ints []int) string {
 	var s []string
 	for _, i := range ints {
 		s = append(s, strconv.Itoa(i))
