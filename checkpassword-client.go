@@ -8,7 +8,8 @@ import "bytes"
 import "encoding/json"
 import "flag"
 import "fmt"
-import "io/ioutil"
+import "io"
+	"io/ioutil"
 import "log"
 import "log/syslog"
 import "net/http"
@@ -60,19 +61,20 @@ func main() {
 	// Open fd3
 	fd3 := os.NewFile(3, "/proc/self/fd/3")
 
-	// Read 512 bytes from fd3
-	data := make([]byte, 512)
-	_, err = fd3.Read(data)
-	if err != nil {
-		log.Fatal(err)
+	// Read a complete, bounded checkpassword record. The third field is optional.
+	data, err := io.ReadAll(io.LimitReader(fd3, 513))
+	fd3.Close()
+	if err != nil || len(data) > 512 {
 		os.Exit(2)
 	}
-
-	// Close fd3
-	fd3.Close()
-
-	// Split input by nullbyte
-	input := bytes.Split(data, []byte("\x00"))
+	input := bytes.Split(data, []byte{0})
+	if len(input) < 3 || len(input[0]) == 0 || len(input[2]) != 0 {
+		os.Exit(2)
+	}
+	// A missing timestamp is represented by an empty third field.
+	if len(input) > 4 || (len(input) == 4 && len(input[3]) != 0) {
+		os.Exit(2)
+	}
 
 	// Username should always be lowercase, hence ToLower
 	username := strings.ToLower(string(input[0]))
