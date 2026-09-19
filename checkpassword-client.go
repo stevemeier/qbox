@@ -138,12 +138,23 @@ func main() {
 
 	// 200 means authentication successful
 	if resp.StatusCode == 200 {
-		var response map[string]interface{}
+		var response struct {
+			Home string `json:"home"`
+			User string `json:"user"`
+			UID int64 `json:"uid"`
+			GID int64 `json:"gid"`
+			QboxUID int64 `json:"qboxuid"`
+			QboxGID int64 `json:"qboxgid"`
+		}
 
 		// Unmarshal response from checkpassword-server
 		err := json.NewDecoder(resp.Body).Decode(&response)
 		if err != nil {
 			syslog.Write([]byte("Failed to unmarshal checkpassword-server response"))
+			os.Exit(4)
+		}
+
+		if response.Home == "" || response.User == "" || response.UID <= 0 || response.GID <= 0 || response.QboxUID <= 0 || response.QboxGID <= 0 {
 			os.Exit(4)
 		}
 
@@ -159,25 +170,25 @@ func main() {
 		os.Setenv("ORIG_UID", env_orig_uid)
 
 		// Set up the environment for the authenticated user
-		os.Setenv("HOME", response["home"].(string))
-		os.Setenv("USER", response["user"].(string))
-		os.Setenv("UID", fmt.Sprintf("%.0f", response["uid"]))
-		os.Setenv("QBOXUID", fmt.Sprintf("%.0f", response["qboxuid"]))
-		os.Setenv("QBOXGID", fmt.Sprintf("%.0f", response["qboxgid"]))
+		os.Setenv("HOME", response.Home)
+		os.Setenv("USER", response.User)
+		os.Setenv("UID", strconv.FormatInt(response.UID, 10))
+		os.Setenv("QBOXUID", strconv.FormatInt(response.QboxUID, 10))
+		os.Setenv("QBOXGID", strconv.FormatInt(response.QboxGID, 10))
 
 		// Go to the home directory
-		err = os.Chdir(response["home"].(string))
+		err = os.Chdir(response.Home)
 		if err != nil && !dovecot {
 			// For Dovecot this is not a problem as it will open the folder itself later
-			syslog.Write([]byte(fmt.Sprintf("Failed to chdir to user's homedir %s [%s]", response["home"].(string), err.Error())))
+			syslog.Write([]byte(fmt.Sprintf("Failed to chdir to user's homedir %s [%s]", response.Home, err.Error())))
 			os.Exit(5)
 		}
 
 		if dovecot {
 			// Dovecot expects special variables in the environment
-			os.Setenv("userdb_uid",  fmt.Sprintf("%.0f", response["uid"]))
-			os.Setenv("userdb_gid",  fmt.Sprintf("%.0f", response["gid"]))
-			os.Setenv("userdb_mail", fmt.Sprintf("maildir:%s:LAYOUT=fs:INBOX=%s/INBOX", response["home"], response["home"]))
+			os.Setenv("userdb_uid",  strconv.FormatInt(response.UID, 10))
+			os.Setenv("userdb_gid",  strconv.FormatInt(response.GID, 10))
+			os.Setenv("userdb_mail", fmt.Sprintf("maildir:%s:LAYOUT=fs:INBOX=%s/INBOX", response.Home, response.Home))
 			os.Setenv("EXTRA", "userdb_uid userdb_gid userdb_mail")
 		}
 
