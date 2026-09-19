@@ -112,12 +112,7 @@ func main() {
 	})
 
 	// Setup HTTP client, request and headers
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	client := &http.Client{ Timeout: time.Second * 5 }
 	req, err := http.NewRequest("POST", cpurl, bytes.NewBuffer(body))
 	if err != nil { log.Panic(err) }
 	req.Header.Set("Content-Type", "application/json")
